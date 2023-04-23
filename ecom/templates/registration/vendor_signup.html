@@ -1,0 +1,9 @@
+{% extends "ecom/base.html" %}
+{% block content %}
+    <h1>Vendor Sign Up!!!</h1>
+    <form action="{%  url 'vendor_signup'  %}" method="POST" class="post-form">
+        {% csrf_token %}
+        {{form.as_p}}
+        <button type="submit" class="save btn btn-default">Save</button>
+    </form>
+{% endblock %}
