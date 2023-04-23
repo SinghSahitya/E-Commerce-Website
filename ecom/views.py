@@ -2,7 +2,11 @@ from django.shortcuts import render, redirect
 from .forms import CustomerSignUpForm, VendorSignUpForm, ItemForm
 from .models import User, Customer, Vendor, Item, Orders
 from django.views.generic import CreateView
+from django.urls import reverse_lazy
+from django.contrib.auth.views import LoginView
+from django.contrib.auth.decorators import login_required
 
+@login_required(login_url='customer_login')
 def home(request):
     return render(request, 'ecom/home.html')
 
@@ -46,3 +50,14 @@ class ItemFormView(CreateView):
     form_class = ItemForm
     model = Item
     
+class CustomerLoginView(LoginView):
+    template_name = 'registration/login.html'
+
+    def get_success_url(self):
+        return reverse_lazy('customer_home')
+
+class VendorLoginView(LoginView):
+    template_name = 'registration/login.html'
+
+    def get_success_url(self):
+        return reverse_lazy('vendor_home')
