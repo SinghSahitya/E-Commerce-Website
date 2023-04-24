@@ -4,9 +4,11 @@ from .models import User, Customer, Vendor, Item, Orders
 from django.views.generic import CreateView
 from django.urls import reverse_lazy
 from django.contrib.auth.views import LoginView
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
 from .decorators import customer_required, vendor_required
 from django.contrib.auth import logout
+import uuid, os
+from ECommerce import settings
 
 def home(request):
     return render(request, 'ecom/home.html')
@@ -59,16 +61,22 @@ def vendor_singup(request):
         form = VendorSignUpForm()
     return render(request, 'registration/vendor_signup.html', {'form': form})
 
-class ItemFormView(CreateView):
+class ItemFormView(LoginRequiredMixin, CreateView):
     form_class = ItemForm
     model = Item
+    success_url = reverse_lazy('vendor_dashboard')
+
+    def form_valid(self, form):
+        form.instance.vendor = self.request.user.vendor
+        image_file = self.request.FILES.get('image')
+        if image_file:
+            filename = f'{uuid.uuid4()}.{image_file.name.split(".")[-1]}'
+            form.instance.image = filename
+            with open(os.path.join(settings.MEDIA_ROOT, filename), 'wb') as f:
+                f.write(image_file.read())
+
+        return super().form_valid(form)
     
-# class CustomerLoginView(LoginView):
-#     template_name = 'registration/login.html'
-
-#     def get_success_url(self):
-#         return reverse_lazy('customer_home')
-
 class UserLoginView(LoginView):
     template_name = 'registration/login.html'
 
@@ -77,5 +85,3 @@ class UserLoginView(LoginView):
             return reverse_lazy('vendor_dashboard')
         elif self.request.user.is_customer:
             return reverse_lazy('customer_home')
-        # else:
-        #     return reverse_lazy('customer_home')

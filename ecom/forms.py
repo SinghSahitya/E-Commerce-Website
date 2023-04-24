@@ -31,6 +31,6 @@ class VendorSignUpForm(UserCreationForm):
 class ItemForm(forms.ModelForm):
     class Meta:
         model = Item
-        fields = {'title',  'price', 'available_units' }
+        fields = {'title',  'price', 'available_units' , 'image','description'}
 
         
