@@ -8,7 +8,7 @@ def customer_required(view_func):
             try:
                 customer = request.user.customer
             except Customer.DoesNotExist:
-                return redirect('customer_home')
+                return redirect('item_list')
             return view_func(request, *args, **kwargs)
         else:
             return redirect('login')

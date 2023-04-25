@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from .forms import CustomerSignUpForm, VendorSignUpForm, ItemForm
 from .models import User, Customer, Vendor, Item, Orders
-from django.views.generic import CreateView
+from django.views.generic import CreateView, ListView
 from django.urls import reverse_lazy
 from django.contrib.auth.views import LoginView
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -10,12 +10,15 @@ from django.contrib.auth import logout
 import uuid, os
 from ECommerce import settings
 
+
 def home(request):
     return render(request, 'ecom/home.html')
 
 @vendor_required
 def dashboard_view(request):
-    return render(request, 'ecom/vendor_dashboard.html')
+    vendor = request.user.vendor
+    context = {'vendor':vendor}
+    return render(request, 'ecom/vendor_dashboard.html', context)
 
 @customer_required
 def cart(request):
@@ -23,7 +26,7 @@ def cart(request):
 
 def logout_view(request):
     logout(request)
-    return redirect('customer_home')
+    return redirect('item_list')
 
 def register(request):
     return render(request, 'registration/register.html')
@@ -84,4 +87,17 @@ class UserLoginView(LoginView):
         if self.request.user.is_vendor:
             return reverse_lazy('vendor_dashboard')
         elif self.request.user.is_customer:
-            return reverse_lazy('customer_home')
+            return reverse_lazy('item_list')
+
+class All_ItemList(ListView):
+    model = Item
+
+
+def vendor_item_list(request, vendor_id):
+    vendor = Vendor.objects.get(id=vendor_id)
+    items = Item.objects.filter(vendor=vendor)
+    context = {
+        'vendor': vendor,
+        'items': items,
+    }
+    return render(request, 'ecom/vendor_item_list.html', context)
