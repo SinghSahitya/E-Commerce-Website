@@ -1,7 +1,7 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from .forms import CustomerSignUpForm, VendorSignUpForm, ItemForm
 from .models import User, Customer, Vendor, Item, Orders
-from django.views.generic import CreateView, ListView
+from django.views.generic import CreateView, ListView, DetailView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 from django.contrib.auth.views import LoginView
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -101,3 +101,26 @@ def vendor_item_list(request, vendor_id):
         'items': items,
     }
     return render(request, 'ecom/vendor_item_list.html', context)
+
+class CustomerDetailView(DetailView):
+    model = Customer
+
+    def get_object(self, queryset=None):
+        return self.request.user.customer
+    
+class CustomerUpdateInfoView(UpdateView):
+    model = Customer
+    template_name ='ecom/customer_updateinfo.html'
+    fields = ['email','phone', 'address', 'balance']
+    success_url = reverse_lazy('customer_detail')
+
+    def get_object(self, queryset=None):
+        return self.request.user.customer
+    
+def delete_item(request, pk):
+    item = get_object_or_404(Item, pk=pk)
+    vendor = item.vendor # Get the vendor object associated with the item
+    if request.method == 'POST':
+        item.delete()
+        return redirect('vendor_items', vendor_id=vendor.id)
+    return render(request, 'ecom/delete_item.html', {'item': item})

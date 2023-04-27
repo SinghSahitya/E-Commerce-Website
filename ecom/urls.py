@@ -14,6 +14,9 @@ urlpatterns = [
     path('item/new/', views.ItemFormView.as_view(), name='new_item'),
     path('login/', views.UserLoginView.as_view(), name='login'),
     path('vendors/<int:vendor_id>/', views.vendor_item_list, name='vendor_items'),
+    path('customer_profile/', views.CustomerDetailView.as_view(), name='customer_detail'),
+    path('customer_updateinfo/', views.CustomerUpdateInfoView.as_view(), name='customer_updateinfo'),
+    path('item/<int:pk>/delete/', views.delete_item,name='delete_item'),
   
     
 ]
