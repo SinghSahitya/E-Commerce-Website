@@ -1,0 +1,13 @@
+{% extends 'ecom/base.html' %}
+{% block content %}
+<h1>Order {{ item.title }}</h1>
+<form method="post">
+  {% csrf_token %}
+  <p>Price: {{ item.price }}</p>
+  <p>Available units: {{ item.available_units }}</p>
+  <label for="quantity">Quantity:</label>
+  <input type="number" name="quantity" id="quantity" min="1" max="{{ item.available_units }}" required>
+  <br><br>
+  <button type="submit">Place Order</button>
+</form>
+{% endblock %}

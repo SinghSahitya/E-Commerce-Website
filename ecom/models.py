@@ -45,12 +45,22 @@ class Item(models.Model):
     def __str__(self):
         return self.title
     
+    
 class Orders(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='order')
     vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name='order')
     item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='order')
     quantity  = models.IntegerField()
+    total_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
     def __str__(self):
         return f"{self.customer.user.username} ordered {self.quantity} units of {self.item.title} from {self.vendor.company_name}"
     
+class Review(models.Model):
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='reviews')
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='reviews')
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.customer.user.username} reviewed {self.item.title}"

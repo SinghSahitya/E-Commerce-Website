@@ -16,7 +16,11 @@ urlpatterns = [
     path('vendors/<int:vendor_id>/', views.vendor_item_list, name='vendor_items'),
     path('customer_profile/', views.CustomerDetailView.as_view(), name='customer_detail'),
     path('customer_updateinfo/', views.CustomerUpdateInfoView.as_view(), name='customer_updateinfo'),
-    path('item/<int:pk>/delete/', views.delete_item,name='delete_item'),
+    path('item/<int:pk>/update/', views.ItemUpdateView.as_view(), name='item_update'),
+    path('place_order/<int:item_id>/', views.place_order_view, name='place_order'),
+    path('order_success/', views.order_success_view, name='order_success'),
+    path('previous_order/', views.OrderListView.as_view(), name='previous_orders'),
+    path('vendor_order/<int:item_id>/', views.vendor_order_view, name='vendor_order'),
   
     
 ]

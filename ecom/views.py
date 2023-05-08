@@ -1,12 +1,17 @@
+from typing import Any, Optional
+from django.db import models
+from django.db.models import Sum
+from django.db.models.query import QuerySet
 from django.shortcuts import render, redirect, get_object_or_404
 from .forms import CustomerSignUpForm, VendorSignUpForm, ItemForm
 from .models import User, Customer, Vendor, Item, Orders
-from django.views.generic import CreateView, ListView, DetailView, UpdateView, DeleteView
+from django.views.generic import CreateView, ListView, DetailView, UpdateView, DeleteView, View
 from django.urls import reverse_lazy
 from django.contrib.auth.views import LoginView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from .decorators import customer_required, vendor_required
 from django.contrib.auth import logout
+from django.contrib import messages
 import uuid, os
 from ECommerce import settings
 
@@ -30,6 +35,9 @@ def logout_view(request):
 
 def register(request):
     return render(request, 'registration/register.html')
+
+def order_success_view(request):
+    return render(request, 'ecom/order_success.html')
 
 def customer_signup(request):
     if request.method == 'POST':
@@ -91,7 +99,13 @@ class UserLoginView(LoginView):
 
 class All_ItemList(ListView):
     model = Item
-
+    template_name = 'ecom/item_list.html'
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        queryset = queryset.annotate(num_sales=Sum('order__quantity'))
+        queryset = queryset.order_by('-num_sales')
+        return queryset
 
 def vendor_item_list(request, vendor_id):
     vendor = Vendor.objects.get(id=vendor_id)
@@ -117,10 +131,48 @@ class CustomerUpdateInfoView(UpdateView):
     def get_object(self, queryset=None):
         return self.request.user.customer
     
-def delete_item(request, pk):
-    item = get_object_or_404(Item, pk=pk)
-    vendor = item.vendor # Get the vendor object associated with the item
+class ItemUpdateView(UpdateView):
+    model = Item
+    template_name = 'ecom/item_update.html'
+    fields = ['title', 'price', 'description', 'available_units']
+    success_url = reverse_lazy('vendor_items')
+
+    def get_success_url(self):
+        return reverse_lazy('vendor_items', kwargs={'pk': self.object.pk})
+
+@customer_required
+def place_order_view(request, item_id):
+    item = get_object_or_404(Item, pk=item_id)
+    customer = request.user.customer
+
     if request.method == 'POST':
-        item.delete()
-        return redirect('vendor_items', vendor_id=vendor.id)
-    return render(request, 'ecom/delete_item.html', {'item': item})
+        quantity = int(request.POST.get('quantity'))
+        total_cost = quantity * item.price
+        if customer.balance >= total_cost and item.available_units >= quantity:
+            order = Orders(customer=customer, vendor=item.vendor, item=item, quantity=quantity, total_cost=total_cost)
+            order.save()
+            customer.balance -= total_cost
+            customer.save()
+            item.available_units -= quantity
+            item.save()
+            return redirect('order_success')
+        else:
+            return redirect('item_list')
+    return render(request, 'ecom/place_order.html', {'item': item})
+
+class OrderListView(ListView):
+    model = Orders
+    template_name = 'ecom/customer_order_list.html'
+    context_object_name = 'orders'
+
+    def get_queryset(self):
+        return Orders.objects.filter(customer__user=self.request.user)
+    
+
+def vendor_order_view(request, item_id):
+    item = get_object_or_404(Item, pk=item_id)
+    orders = Orders.objects.filter(item=item)
+    return render(request, 'ecom/vendor_order.html', {'item':item, 'orders':orders})
+
+
+    

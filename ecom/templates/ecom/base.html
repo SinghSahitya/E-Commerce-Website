@@ -27,6 +27,11 @@
               <li class="nav-item">
                 <a class="nav-link active" aria-current="page" href="{% url 'cart' %}">Cart</a>
               </li>
+              {% if user.is_authenticated and user.is_customer%}
+              <li class="nav-item">
+                <a class="nav-link active" aria-current="page" href="{% url 'previous_orders' %}">Orders</a>
+              </li>
+              {% endif %}
               
             </ul>
           </div>

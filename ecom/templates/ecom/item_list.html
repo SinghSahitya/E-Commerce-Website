@@ -12,7 +12,8 @@
             <h5 class="card-title text-danger">Price: Rs {{ item.price }}</h5>
             <p class="card-text">{{ item.description }}</p>
             <p class="card-text text-primary">In Stock: {{ item.available_units }}</p>
-            <a href="#" class="btn btn-primary">Buy Now</a>
+            <p class="card-text text-success">Sales: {{ item.num_sales }} Units</p>
+            <a href="{% url 'place_order' item_id=item.id %}" class="btn btn-primary">Buy Now</a>
           </div>
         </div>
       </div>

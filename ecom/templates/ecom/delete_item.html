@@ -1,9 +1,12 @@
 {% extends 'ecom/vendor_dashboard.html' %}
 {% block bodyblock %}
-<h2>Are you sure you want to delete "{{ object.title }}"?</h2>
-<form method="post">
-  {% csrf_token %}
-  <button type="submit" class="btn btn-danger">Delete</button>
-  <a href="{% url 'vendor_items' pk=object.pk %}" class="btn btn-secondary">Cancel</a>
-</form>
+<div class="container">
+    <h2>Delete Item</h2>
+    <p>Are you sure you want to delete {{ item.title }}?</p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Yes, delete</button>
+        <a href="{% url 'vendor_items' vendor_id=vendor_id %}" class="btn btn-primary">No, go back</a>
+    </form>
+</div>
 {% endblock %}
