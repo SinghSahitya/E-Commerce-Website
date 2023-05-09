@@ -11,7 +11,8 @@
             <h5 class="card-title text-danger">Price: Rs {{ item.price }}</h5>
             <p class="card-text">{{ item.description }}</p>
             <p class="card-text text-primary">In Stock: {{ item.available_units }}</p>
-            <a href="{% url 'item_update' pk=item.pk %}" class="btn btn-primary">Edit</a> <a href="#" class="btn btn-danger">Delete</a>
+            <a href="{% url 'item_update' pk=item.pk %}" class="btn btn-primary">Edit</a> 
+            <a href="{% url 'delete_item' item_id=item.pk %}" class="btn btn-danger">Delete</a>
             <a href="{% url 'vendor_order' item_id=item.pk %}" class="btn btn-primary">Orders</a>
           </div>
         </div>

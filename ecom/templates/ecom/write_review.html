@@ -1,0 +1,15 @@
+{% extends 'ecom//base.html' %}
+{% block content %}
+<div class="container">
+    <div class="mt-4 p-5 bg-secondary text-white rounded">
+        <div class="container">
+            <h1>Review for {{ item.title  }}</h1>
+            <form action="{%  url 'write_review' item_id=item.pk %}" method="POST" class="post-form">
+                {% csrf_token %}
+                {{form.as_p}}
+            <button type="submit" class="save btn btn-dark">Save</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

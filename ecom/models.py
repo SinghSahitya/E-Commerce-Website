@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser
 
 # Create your models here.
@@ -59,7 +60,7 @@ class Orders(models.Model):
 class Review(models.Model):
     item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='reviews')
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='reviews')
-    content = models.TextField()
+    review = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

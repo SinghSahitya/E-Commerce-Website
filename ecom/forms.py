@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from .models import Customer, User, Vendor, Item
+from .models import Customer, User, Vendor, Item, Review
 
 
 class CustomerSignUpForm(UserCreationForm):
@@ -33,4 +33,9 @@ class ItemForm(forms.ModelForm):
         model = Item
         fields = {'title',  'price', 'available_units' , 'image','description'}
 
-        
+
+class ReviewForm(forms.ModelForm):
+    review = forms.CharField(widget=forms.Textarea(attrs={'rows': 5}))
+    class Meta:
+        model = Review
+        fields = {'review'}

@@ -3,8 +3,8 @@ from django.db import models
 from django.db.models import Sum
 from django.db.models.query import QuerySet
 from django.shortcuts import render, redirect, get_object_or_404
-from .forms import CustomerSignUpForm, VendorSignUpForm, ItemForm
-from .models import User, Customer, Vendor, Item, Orders
+from .forms import CustomerSignUpForm, VendorSignUpForm, ItemForm, ReviewForm
+from .models import User, Customer, Vendor, Item, Orders, Review
 from django.views.generic import CreateView, ListView, DetailView, UpdateView, DeleteView, View
 from django.urls import reverse_lazy
 from django.contrib.auth.views import LoginView
@@ -72,6 +72,25 @@ def vendor_singup(request):
         form = VendorSignUpForm()
     return render(request, 'registration/vendor_signup.html', {'form': form})
 
+@customer_required
+def write_review(request, item_id):
+    item = get_object_or_404(Item, pk=item_id)
+    if request.method == 'POST':
+        form = ReviewForm(request.POST)
+        if form.is_valid():
+            review = form.save(commit=False)
+            review.item = item
+            review.customer = request.user.customer
+            review.save()
+            return redirect('item_detail', item_id=item.pk)
+
+    else:
+        form = ReviewForm()
+
+    return render(request, 'ecom/write_review.html', {'item':item, 'form':form})
+
+
+
 class ItemFormView(LoginRequiredMixin, CreateView):
     form_class = ItemForm
     model = Item
@@ -135,7 +154,7 @@ class ItemUpdateView(UpdateView):
     model = Item
     template_name = 'ecom/item_update.html'
     fields = ['title', 'price', 'description', 'available_units']
-    success_url = reverse_lazy('vendor_items')
+
 
     def get_success_url(self):
         return reverse_lazy('vendor_items', kwargs={'pk': self.object.pk})
@@ -175,4 +194,20 @@ def vendor_order_view(request, item_id):
     return render(request, 'ecom/vendor_order.html', {'item':item, 'orders':orders})
 
 
-    
+def item_detail(request, item_id):
+    item = get_object_or_404(Item, pk=item_id)
+    reviews = Review.objects.filter(item=item)
+    context = {
+        'item': item,
+        'reviews': reviews,
+    }
+    return render(request, 'ecom/item_detail.html', context)
+
+
+def delete_item(request, item_id):
+    item = Item.objects.get(id=item_id)
+    item.delete()
+    return redirect('vendor_items', vendor_id=request.user.vendor.pk)
+
+
+

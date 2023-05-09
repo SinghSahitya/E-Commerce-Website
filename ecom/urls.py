@@ -21,9 +21,14 @@ urlpatterns = [
     path('order_success/', views.order_success_view, name='order_success'),
     path('previous_order/', views.OrderListView.as_view(), name='previous_orders'),
     path('vendor_order/<int:item_id>/', views.vendor_order_view, name='vendor_order'),
+    path('customer/<int:item_id>/review/', views.write_review, name='write_review'),
+    path('detail/<int:item_id>/', views.item_detail, name='item_detail'),
+    path('delete_item/<int:item_id>/', views.delete_item, name='delete_item'),
+]
+    
   
     
-]
+
 
 if settings.DEBUG:  
         urlpatterns += static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT)  
