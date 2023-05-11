@@ -13,6 +13,7 @@
         <h5 class="text-danger">Price: Rs {{ item.price }}</h5>
         <p>Available Units: {{item.available_units}}</p>
         <a href="{% url 'place_order' item_id=item.pk %}" class="btn btn-primary">Buy Now</a>
+        <a href="{% url 'add_to_wishlist' item_id=item.pk %}" class="btn btn-primary" onclick="showAlert">Add To Wishlist</a>
       </div>
     </div>
   </div>
@@ -49,4 +50,10 @@
 
 <!-- Bootstrap JavaScript -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  function showAlert() {
+    var myText = "Added To Wishlist!";
+    alert (myText);
+  }
+  </script>
 {% endblock	%}

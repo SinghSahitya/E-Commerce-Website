@@ -24,6 +24,10 @@ urlpatterns = [
     path('customer/<int:item_id>/review/', views.write_review, name='write_review'),
     path('detail/<int:item_id>/', views.item_detail, name='item_detail'),
     path('delete_item/<int:item_id>/', views.delete_item, name='delete_item'),
+    path('download_report/', views.download_report, name='download_report'),
+    path('wishlist/', views.wishlist_view, name='wishlist'),
+    path('add_to_wishlist/<int:item_id>/', views.add_to_wishlist, name='add_to_wishlist'),
+    path('wishlist/remove/<int:item_id>/', views.remove_from_wishlist, name='remove_from_wishlist'),
 ]
     
   

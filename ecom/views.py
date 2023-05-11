@@ -4,7 +4,7 @@ from django.db.models import Sum
 from django.db.models.query import QuerySet
 from django.shortcuts import render, redirect, get_object_or_404
 from .forms import CustomerSignUpForm, VendorSignUpForm, ItemForm, ReviewForm
-from .models import User, Customer, Vendor, Item, Orders, Review
+from .models import User, Customer, Vendor, Item, Orders, Review, Wishlist
 from django.views.generic import CreateView, ListView, DetailView, UpdateView, DeleteView, View
 from django.urls import reverse_lazy
 from django.contrib.auth.views import LoginView
@@ -14,6 +14,11 @@ from django.contrib.auth import logout
 from django.contrib import messages
 import uuid, os
 from ECommerce import settings
+from django.core.mail import send_mail
+from mailjet_rest import Client
+import requests
+import csv
+from django.http import HttpResponse
 
 
 def home(request):
@@ -124,6 +129,7 @@ class All_ItemList(ListView):
         queryset = super().get_queryset()
         queryset = queryset.annotate(num_sales=Sum('order__quantity'))
         queryset = queryset.order_by('-num_sales')
+    
         return queryset
 
 def vendor_item_list(request, vendor_id):
@@ -174,6 +180,35 @@ def place_order_view(request, item_id):
             customer.save()
             item.available_units -= quantity
             item.save()
+
+            #for sending emails
+            vendor_email = item.vendor.email
+            vendor_name = item.vendor.company_name
+            customer_name = customer.user.username
+            email_subject = 'New Order Placed!'
+            email_body = f'You have a new order from {customer_name}. Item: {item.title}. Quantity: {quantity}. Total Cost: {total_cost}'
+            
+            mailgun_api_key = 'b92ee73d6256b7199da0998ee4b66e58-6b161b0a-02b199da'
+            mailgun_domain = 'sandbox9ac137dada9e488b83c11c29e7d4018a.mailgun.org'
+            mailgun_base_url = 'https://api.mailgun.net/v3/sandbox9ac137dada9e488b83c11c29e7d4018a.mailgun.org'
+
+            # Prepare the email data
+            data = {
+                'from': f'{settings.MAILJET_SENDER_NAME} <mailgun@sandbox9ac137dada9e488b83c11c29e7d4018a.mailgun.org>',
+                'to': [vendor_email, "YOU@sandbox9ac137dada9e488b83c11c29e7d4018a.mailgun.org"],
+                'subject': email_subject,
+                'text': email_body
+            }
+
+            # Send the email using Mailgun API  
+            response = requests.post(
+                f'{mailgun_base_url}/messages',
+                auth=('api', mailgun_api_key),
+                data=data
+            )
+            
+
+            print(response.status_code)
             return redirect('order_success')
         else:
             return redirect('item_list')
@@ -210,4 +245,47 @@ def delete_item(request, item_id):
     return redirect('vendor_items', vendor_id=request.user.vendor.pk)
 
 
+def download_report(request):
+    report_data = Orders.objects.filter(vendor=request.user.vendor)
 
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="report.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow(['Order ID', 'Customer', 'Item', 'Quantity', 'Total Cost'])  
+    for order in report_data:
+        writer.writerow([order.id, order.customer.user.username, order.item.title, order.quantity, order.total_cost])
+
+    return response
+
+@customer_required
+def add_to_wishlist(request, item_id):
+    item = get_object_or_404(Item, pk=item_id)
+    customer = request.user.customer
+
+    # Check if the item already exists in the customer's wishlist
+    if Wishlist.objects.filter(customer=customer, item=item).exists():
+        messages.error(request, 'This item is already in your wishlist.')
+    else:
+        wishlist = Wishlist(customer=customer, item=item)
+        wishlist.save()
+
+    return redirect('wishlist')
+@customer_required
+def wishlist_view(request):
+    customer = request.user.customer
+    wishlist_items = Item.objects.filter(wishlist__customer=customer)
+    context = {'items': wishlist_items}
+    return render(request, 'ecom/wishlist.html', context)
+
+@customer_required
+def remove_from_wishlist(request, item_id):
+    item = get_object_or_404(Item, pk=item_id)
+    customer = request.user.customer
+    try:
+        wishlist_item = Wishlist.objects.get(customer=customer, item=item)
+        wishlist_item.delete()
+        messages.success(request, f"{item.title} has been removed from your wishlist.")
+    except Wishlist.DoesNotExist:
+        messages.error(request, f"{item.title} is not in your wishlist.")
+    return redirect('wishlist')

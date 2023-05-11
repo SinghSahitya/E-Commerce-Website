@@ -7,6 +7,8 @@ import sys
 def main():
     """Run administrative tasks."""
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ECommerce.settings')
+    os.environ.setdefault("DJANGO_READ_DOT_ENV_FILE", "True")
+
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

@@ -11,7 +11,7 @@
           <div class="card-body text-center">
             <h3 class="card-title">{{ item.title }}</h3>
             <h5 class="card-title text-danger">Price: Rs {{ item.price }}</h5>
-            <p class="card-text">{{ item.description }}</p>
+            <p class="card-text">{{ item.description|truncatewords:15 }}</p>
             <p class="card-text text-primary">In Stock: {{ item.available_units }}</p>
             <p class="card-text text-success">Sales: {{ item.num_sales }} Units</p>
           </a>

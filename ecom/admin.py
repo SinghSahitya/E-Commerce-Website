@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, Customer, Vendor, Item, Orders, Review
+from .models import User, Customer, Vendor, Item, Orders, Review, Wishlist
 # Register your models here.
 
 admin.site.register(User)
@@ -8,3 +8,4 @@ admin.site.register(Vendor)
 admin.site.register(Item)
 admin.site.register(Orders)
 admin.site.register(Review)
+admin.site.register(Wishlist)

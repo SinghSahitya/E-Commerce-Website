@@ -12,6 +12,9 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 
 from pathlib import Path
 import os
+from . import creds
+
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,7 +25,7 @@ TEMPLATES_DIR = Path(BASE_DIR) / 'templates'
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-8^oqdq8yn1#w5t34_#kv8wzq^7l-2j-opp6wibz2lwm2^0qs%%'
+SECRET_KEY = creds.SECRET_KEY
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -78,8 +81,12 @@ WSGI_APPLICATION = 'ECommerce.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': creds.NAME,
+        'USER': creds.USER,
+        'PASSWORD': creds.PASSWORD,
+        'HOST': creds.HOST,
+        'PORT': creds.PORT,
     }
 }
 
@@ -133,3 +140,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+MAILJET_API_KEY = creds.mailjet_api_key
+MAILJET_API_SECRET = creds.mailjet_secret_key
+MAILJET_SENDER_EMAIL = creds.mailjet_sender_email
+MAILJET_SENDER_NAME  = creds.mailjet_sender_name

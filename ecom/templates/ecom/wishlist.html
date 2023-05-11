@@ -1,0 +1,41 @@
+{% extends 'ecom/base.html' %}
+{% block content %}
+{% if messages %}
+<div class="container mt-4">
+  {% for message in messages %}
+    <div class="alert alert-danger" role="alert">
+      {{ message }}
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+<div class="container-fluid">
+    <div class="row">
+      {% for item in items %}
+        <div class="col-sm-6 col-md-4 col-lg-3">
+          <div class="card mb-4">
+            <a href="{% url 'item_detail' item_id=item.pk %}" style="color: black; text-decoration: none;" class="card-link">
+              <img class="card-img-top" src="{{ item.image.url }}" alt="Card image">
+            <div class="card-body text-center">
+              <h3 class="card-title">{{ item.title }}</h3>
+              <h5 class="card-title text-danger">Price: Rs {{ item.price }}</h5>
+              <p class="card-text">{{ item.description }}</p>
+              <p class="card-text text-primary">In Stock: {{ item.available_units }}</p>
+              <p class="card-text text-success">Sales: {{ item.num_sales }} Units</p>
+            </a>
+            <div class="card-body text-center">
+                <!-- Card body content -->
+                <form action="{% url 'remove_from_wishlist' item_id=item.pk %}" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Remove from Wishlist</button>
+                </form>
+            </div>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>  
+
+
+{% endblock %}
