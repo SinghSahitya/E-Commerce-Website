@@ -43,6 +43,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'ecom',
+    'import_export',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    'django.contrib.sites',
 ]
 
 MIDDLEWARE = [
@@ -109,9 +115,26 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend'
+]
 
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+        }
+    }
+}
 # Internationalization
 # https://docs.djangoproject.com/en/3.2/topics/i18n/
+
+SITE_ID = 1
 
 LANGUAGE_CODE = 'en-us'
 
@@ -141,7 +164,3 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-MAILJET_API_KEY = creds.mailjet_api_key
-MAILJET_API_SECRET = creds.mailjet_secret_key
-MAILJET_SENDER_EMAIL = creds.mailjet_sender_email
-MAILJET_SENDER_NAME  = creds.mailjet_sender_name

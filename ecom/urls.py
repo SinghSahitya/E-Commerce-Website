@@ -17,9 +17,9 @@ urlpatterns = [
     path('customer_profile/', views.CustomerDetailView.as_view(), name='customer_detail'),
     path('customer_updateinfo/', views.CustomerUpdateInfoView.as_view(), name='customer_updateinfo'),
     path('item/<int:pk>/update/', views.ItemUpdateView.as_view(), name='item_update'),
-    path('place_order/<int:item_id>/', views.place_order_view, name='place_order'),
+    path('place_order/', views.place_order, name='place_order'),
     path('order_success/', views.order_success_view, name='order_success'),
-    path('previous_order/', views.OrderListView.as_view(), name='previous_orders'),
+    path('previous_order/', views.orders, name='orders'),
     path('vendor_order/<int:item_id>/', views.vendor_order_view, name='vendor_order'),
     path('customer/<int:item_id>/review/', views.write_review, name='write_review'),
     path('detail/<int:item_id>/', views.item_detail, name='item_detail'),
@@ -28,6 +28,9 @@ urlpatterns = [
     path('wishlist/', views.wishlist_view, name='wishlist'),
     path('add_to_wishlist/<int:item_id>/', views.add_to_wishlist, name='add_to_wishlist'),
     path('wishlist/remove/<int:item_id>/', views.remove_from_wishlist, name='remove_from_wishlist'),
+    path('add_to_cart/<int:item_id>/', views.add_to_cart, name='add_to_cart'),
+    path('remove_from_cart/<int:item_id>/', views.remove_from_cart, name='remove_from_cart'),
+
 ]
     
   

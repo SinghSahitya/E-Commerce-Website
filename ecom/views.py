@@ -4,7 +4,7 @@ from django.db.models import Sum
 from django.db.models.query import QuerySet
 from django.shortcuts import render, redirect, get_object_or_404
 from .forms import CustomerSignUpForm, VendorSignUpForm, ItemForm, ReviewForm
-from .models import User, Customer, Vendor, Item, Orders, Review, Wishlist
+from .models import User, Customer, Vendor, Item, Orders, Review, Wishlist, OrderItem, CartItem, Cart
 from django.views.generic import CreateView, ListView, DetailView, UpdateView, DeleteView, View
 from django.urls import reverse_lazy
 from django.contrib.auth.views import LoginView
@@ -19,6 +19,7 @@ from mailjet_rest import Client
 import requests
 import csv
 from django.http import HttpResponse
+from ECommerce import creds
 
 
 def home(request):
@@ -29,10 +30,6 @@ def dashboard_view(request):
     vendor = request.user.vendor
     context = {'vendor':vendor}
     return render(request, 'ecom/vendor_dashboard.html', context)
-
-@customer_required
-def cart(request):
-    return render(request, 'ecom/cart.html')
 
 def logout_view(request):
     logout(request)
@@ -127,7 +124,7 @@ class All_ItemList(ListView):
     
     def get_queryset(self):
         queryset = super().get_queryset()
-        queryset = queryset.annotate(num_sales=Sum('order__quantity'))
+        queryset = queryset.annotate(num_sales=Sum('order_items__quantity'))
         queryset = queryset.order_by('-num_sales')
     
         return queryset
@@ -164,70 +161,11 @@ class ItemUpdateView(UpdateView):
 
     def get_success_url(self):
         return reverse_lazy('vendor_items', kwargs={'pk': self.object.pk})
-
-@customer_required
-def place_order_view(request, item_id):
-    item = get_object_or_404(Item, pk=item_id)
-    customer = request.user.customer
-
-    if request.method == 'POST':
-        quantity = int(request.POST.get('quantity'))
-        total_cost = quantity * item.price
-        if customer.balance >= total_cost and item.available_units >= quantity:
-            order = Orders(customer=customer, vendor=item.vendor, item=item, quantity=quantity, total_cost=total_cost)
-            order.save()
-            customer.balance -= total_cost
-            customer.save()
-            item.available_units -= quantity
-            item.save()
-
-            #for sending emails
-            vendor_email = item.vendor.email
-            vendor_name = item.vendor.company_name
-            customer_name = customer.user.username
-            email_subject = 'New Order Placed!'
-            email_body = f'You have a new order from {customer_name}. Item: {item.title}. Quantity: {quantity}. Total Cost: {total_cost}'
-            
-            mailgun_api_key = 'b92ee73d6256b7199da0998ee4b66e58-6b161b0a-02b199da'
-            mailgun_domain = 'sandbox9ac137dada9e488b83c11c29e7d4018a.mailgun.org'
-            mailgun_base_url = 'https://api.mailgun.net/v3/sandbox9ac137dada9e488b83c11c29e7d4018a.mailgun.org'
-
-            # Prepare the email data
-            data = {
-                'from': f'{settings.MAILJET_SENDER_NAME} <mailgun@sandbox9ac137dada9e488b83c11c29e7d4018a.mailgun.org>',
-                'to': [vendor_email, "YOU@sandbox9ac137dada9e488b83c11c29e7d4018a.mailgun.org"],
-                'subject': email_subject,
-                'text': email_body
-            }
-
-            # Send the email using Mailgun API  
-            response = requests.post(
-                f'{mailgun_base_url}/messages',
-                auth=('api', mailgun_api_key),
-                data=data
-            )
-            
-
-            print(response.status_code)
-            return redirect('order_success')
-        else:
-            return redirect('item_list')
-    return render(request, 'ecom/place_order.html', {'item': item})
-
-class OrderListView(ListView):
-    model = Orders
-    template_name = 'ecom/customer_order_list.html'
-    context_object_name = 'orders'
-
-    def get_queryset(self):
-        return Orders.objects.filter(customer__user=self.request.user)
     
-
 def vendor_order_view(request, item_id):
     item = get_object_or_404(Item, pk=item_id)
-    orders = Orders.objects.filter(item=item)
-    return render(request, 'ecom/vendor_order.html', {'item':item, 'orders':orders})
-
+    order_items = OrderItem.objects.filter(item=item)
+    return render(request, 'ecom/vendor_order.html', {'item': item, 'order_items': order_items})
 
 def item_detail(request, item_id):
     item = get_object_or_404(Item, pk=item_id)
@@ -252,9 +190,10 @@ def download_report(request):
     response['Content-Disposition'] = 'attachment; filename="report.csv"'
 
     writer = csv.writer(response)
-    writer.writerow(['Order ID', 'Customer', 'Item', 'Quantity', 'Total Cost'])  
+    writer.writerow(['Order ID', 'Customer', 'Item', 'Quantity', 'Total Cost', 'Ordered At'])  
     for order in report_data:
-        writer.writerow([order.id, order.customer.user.username, order.item.title, order.quantity, order.total_cost])
+        for order_item in order.order_items.all():
+            writer.writerow([order_item.order.id, order.customer.user.username, order_item.item.title, order_item.quantity, order_item.total_cost, order.ordered_at])
 
     return response
 
@@ -269,7 +208,7 @@ def add_to_wishlist(request, item_id):
     else:
         wishlist = Wishlist(customer=customer, item=item)
         wishlist.save()
-
+        messages.success(request, f"{item.title} added to your wishlist!")
     return redirect('wishlist')
 @customer_required
 def wishlist_view(request):
@@ -289,3 +228,152 @@ def remove_from_wishlist(request, item_id):
     except Wishlist.DoesNotExist:
         messages.error(request, f"{item.title} is not in your wishlist.")
     return redirect('wishlist')
+
+@customer_required
+def add_to_cart(request, item_id):
+    item = Item.objects.get(pk=item_id)
+    customer = request.user.customer
+    cart, created = Cart.objects.get_or_create(customer=customer)
+    cart_item, created = CartItem.objects.get_or_create(cart=cart, item=item)
+    try:
+        cart_item.quantity = int(request.POST.get('quantity'))
+    except:
+        pass
+    cart_item.save()
+    return redirect('cart')
+
+def remove_from_cart(request, item_id):
+    item = Item.objects.get(pk=item_id)
+    customer = request.user.customer
+    cart = Cart.objects.get(customer=customer)
+    cart_item = CartItem.objects.get(cart=cart, item=item)
+    if cart_item.quantity > 1:
+        cart_item.quantity -= 1
+        cart_item.save()
+    else:
+        cart_item.delete()
+        cart.items.remove(item)
+
+    return redirect('cart')
+
+
+def cart(request):
+    customer = request.user.customer
+    try:
+        cart = request.user.customer.cart
+    except Cart.DoesNotExist:
+        # Create a new cart for the customer
+        customer = request.user.customer
+        cart = Cart.objects.create(customer=customer)
+    cart_items = cart.cart_items.all()
+    return render(request, 'ecom/cart.html', {'cart_items': cart_items})
+
+def orders(request):
+    customer = request.user.customer
+    orders = Orders.objects.filter(customer=customer)
+    return render(request, 'ecom/customer_order_list.html', {'orders': orders})
+
+
+# @customer_required
+# def place_order_view(request, item_id):
+#     item = get_object_or_404(Item, pk=item_id)
+#     customer = request.user.customer
+
+#     if request.method == 'POST':
+#         quantity = int(request.POST.get('quantity'))
+#         total_cost = quantity * item.price
+#         if customer.balance >= total_cost and item.available_units >= quantity:
+#             order = Orders(customer=customer, vendor=item.vendor, item=item, quantity=quantity, total_cost=total_cost)
+#             order.save()
+#             customer.balance -= total_cost
+#             customer.save()
+#             item.available_units -= quantity
+#             item.save()
+
+#             #for sending emails
+#             vendor_email = item.vendor.email
+#             vendor_name = item.vendor.company_name
+#             customer_name = customer.user.username
+#             email_subject = 'New Order Placed!'
+#             email_body = f'You have a new order from {customer_name}. Item: {item.title}. Quantity: {quantity}. Total Cost: {total_cost}'
+            
+#             mailgun_api_key = 'b92ee73d6256b7199da0998ee4b66e58-6b161b0a-02b199da'
+#             mailgun_domain = 'sandbox9ac137dada9e488b83c11c29e7d4018a.mailgun.org'
+#             mailgun_base_url = 'https://api.mailgun.net/v3/sandbox9ac137dada9e488b83c11c29e7d4018a.mailgun.org'
+
+#             # Prepare the email data
+#             data = {
+#                 'from': f'{settings.MAILJET_SENDER_NAME} <mailgun@sandbox9ac137dada9e488b83c11c29e7d4018a.mailgun.org>',
+#                 'to': [vendor_email, "YOU@sandbox9ac137dada9e488b83c11c29e7d4018a.mailgun.org"],
+#                 'subject': email_subject,
+#                 'text': email_body
+#             }
+
+#             # Send the email using Mailgun API  
+#             response = requests.post(
+#                 f'{mailgun_base_url}/messages',
+#                 auth=('api', mailgun_api_key),
+#                 data=data
+#             )
+            
+
+#             print(response.status_code)
+#             return redirect('order_success')
+#         else:
+#             return redirect('item_list')
+#     return render(request, 'ecom/place_order.html', {'item': item})
+
+def send_email_to_vendor(vendor_email, customer_name, item_name):
+    mailgun_url = f"https://api.mailgun.net/v3/{creds.MAILGUN_DOMAIN}/messages"
+    auth = ("api", creds.MAILGUN_API_KEY)
+    data = {
+        "from": f"DjangoMart <mailgun@{creds.MAILGUN_DOMAIN}>",
+        "to": vendor_email,
+        "subject": "New Order",
+        "text": f"Hello, {vendor_email}!\n\nYou have a new order from {customer_name} for the item {item_name}.",
+        "html": f"<h3>Hello, {vendor_email}!</h3><p>You have a new order from {customer_name} for the item {item_name}.</p>"
+    }
+    response = requests.post(mailgun_url, auth=auth, data=data)
+    print(response.status_code)
+    return response.status_code
+
+
+def place_order(request):
+    customer = request.user.customer
+    cart = Cart.objects.get(customer=customer)
+    items = cart.cart_items.all()
+    vendor_items = {}
+    total_amount = 0
+
+    for cart_item in items:
+        vendor = cart_item.item.vendor
+        if vendor not in vendor_items:
+            vendor_items[vendor] = []
+        vendor_items[vendor].append(cart_item)
+        total_amount += cart_item.item.price * cart_item.quantity
+
+    if total_amount > customer.balance:
+        messages.error(request, "Insufficient balance. Cannot place order.")
+        return redirect('cart')
+
+    for vendor, cart_items in vendor_items.items():
+        order = Orders.objects.create(customer=customer, vendor=vendor)
+        for cart_item in cart_items:
+            item = cart_item.item
+            OrderItem.objects.create(order=order, item=item, quantity=cart_item.quantity, total_cost=cart_item.quantity*cart_item.item.price)
+            item.available_units -= cart_item.quantity
+            item.save()
+            cart_item.delete()
+
+            vendor_email = item.vendor.email
+            customer_name = request.user.username
+            item_name = item.title
+            status_code = send_email_to_vendor(vendor_email, customer_name, item_name)
+            
+
+    customer.balance -= total_amount
+    customer.save()
+    messages.success(request, "Order placed successfully!")
+    return redirect('orders')
+    
+

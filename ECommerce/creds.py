@@ -6,8 +6,5 @@ HOST = "127.0.0.1"
 PORT = "5432"
 
 
-
-mailjet_api_key = "eae1750deb7851a200cbafff79e9c283"
-mailjet_secret_key = "4c36754abd25f3ef06b7151329f7b47e"
-mailjet_sender_email = "djangomart1@gmail.com"
-mailjet_sender_name = "DjangoMart"
+MAILGUN_API_KEY = 'key-03014d8fcd3820b627044b58207ef2ea'
+MAILGUN_DOMAIN = 'sandbox9ac137dada9e488b83c11c29e7d4018a.mailgun.org'
