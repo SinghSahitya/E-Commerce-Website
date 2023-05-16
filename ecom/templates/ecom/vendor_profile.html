@@ -1,0 +1,76 @@
+{% extends 'ecom/vendor_dashboard.html' %}
+
+{% block bodyblock %}
+
+  <h1 class="page-title">Vendor Details</h1>
+
+  <div class="row text-black">
+    <div class="col-md-6">
+      <div class="mb-3">
+        <label for="firstName" class="form-label">First Name</label>
+        <input type="text" class="form-control" id="firstName" name="firstName" value="{{ user.first_name }}" readonly>
+      </div>
+      <div class="mb-3">
+        <label for="companyName" class="form-label">Company Name</label>
+        <input type="text" class="form-control" id="companyName" name="companyName" value="{{ user.vendor.company_name }}" readonly>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="mb-3">
+        <label for="email" class="form-label">Email</label>
+        <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}" readonly>
+      </div>
+      <div class="mb-3">
+        <label for="username" class="form-label">Username</label>
+        <input type="text" class="form-control" id="username" name="username" value="{{ user.username }}" readonly>
+      </div>
+    </div>
+  </div>
+  <div class="container my-5">
+    <h2 class="text mb-5">Orders</h2>
+    
+    {% if orders %}
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Customer</th>
+            <th>Quantity</th>
+            <th>Amount</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+        {%  for order in orders  %}
+            {% for order_item in order.order_items.all %}
+
+            <tr>
+              <td>{{ order_item.item.title }}</td>
+              <td>{{ order.customer.user.username  }}</td>
+              <td>{{ order_item.quantity }}</td>
+              <td>{{ order_item.total_cost }}</td>
+              <td>{{  order.ordered_at  }}</td>
+              
+            </tr>
+            {% endfor %}
+        {% endfor %}
+        </tbody>
+      </table>
+      
+      <div class="text-center">
+        <a href="{% url 'download_report' %}" class="btn btn-primary">Generate CSV</a>
+      </div>
+    {% else %}
+      <div class="row">
+        <div class="col-md-8 offset-md-2">
+          <div class="card mb-3">
+            <div class="card-body">
+              <h2 class="text-center">No orders placed!!</h2>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+{% endblock %}

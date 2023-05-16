@@ -11,13 +11,17 @@
         <h1 class="display-4">{{item.title}}</h1>
         <p class="lead">{{item.description}}</p>
         <h5 class="text-danger">Price: Rs {{ item.price }}</h5>
-        <p>Available Units: {{item.available_units}}</p>
-        <form method="POST" action="{% url 'add_to_cart' item_id=item.pk %}">
-          {% csrf_token %}
-          <label for="quantity">Quantity:</label>
-          <input type="number" id="quantity" name="quantity" value="1" min="1">
-          <button type="submit" class="btn btn-primary">Add to Cart</button>
-        </form>
+        {% if item.available_units > 0 %}
+            <p>Available Units: {{item.available_units}}</p>
+            <form method="POST" action="{% url 'add_to_cart' item_id=item.pk %}">
+              {% csrf_token %}
+              <label for="quantity">Quantity:</label>
+              <input type="number" id="quantity" name="quantity" value="1" min="1" max="{{ item.available_units }}">
+              <button type="submit" class="btn btn-primary">Add to Cart</button>
+            </form>
+        {% else %}
+              <p class="text-danger">Not Available For Sale!!</p>
+        {% endif %}
         <a href="{% url 'add_to_wishlist' item_id=item.pk %}" class="btn btn-primary">Add To Wishlist</a>
       </div>
     </div>

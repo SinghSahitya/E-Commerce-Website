@@ -1,5 +1,14 @@
 {% extends 'ecom/vendor_dashboard.html' %}
 {% block bodyblock %}
+{% if messages %}
+<div class="container mt-4">
+  {% for message in messages %}
+    <div class="alert alert-success" role="alert">
+      {{ message }}
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
 <div class="container-fluid">
   <div class="row">
     {% for item in items %}
@@ -9,7 +18,7 @@
           <div class="card-body text-center">
             <h4 class="card-title">{{ item.title }}</h4>
             <h5 class="card-title text-danger">Price: Rs {{ item.price }}</h5>
-            <p class="card-text">{{ item.description }}</p>
+            <p class="card-text">{{ item.description|truncatewords:15 }}</p>
             <p class="card-text text-primary">In Stock: {{ item.available_units }}</p>
             <a href="{% url 'item_update' pk=item.pk %}" class="btn btn-primary">Edit</a> 
             <a href="{% url 'delete_item' item_id=item.pk %}" class="btn btn-danger">Delete</a>

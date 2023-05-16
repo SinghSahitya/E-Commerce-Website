@@ -25,18 +25,14 @@ from ECommerce import creds
 def home(request):
     return render(request, 'ecom/home.html')
 
-@vendor_required
-def dashboard_view(request):
-    vendor = request.user.vendor
-    context = {'vendor':vendor}
-    return render(request, 'ecom/vendor_dashboard.html', context)
-
 def logout_view(request):
     logout(request)
     return redirect('item_list')
 
-def register(request):
-    return render(request, 'registration/register.html')
+def vendor_profile(request):
+    vendor = request.user.vendor
+    orders = Orders.objects.filter(vendor=vendor)
+    return render(request, 'ecom/vendor_profile.html', {'orders':orders})
 
 def order_success_view(request):
     return render(request, 'ecom/order_success.html')
@@ -96,7 +92,7 @@ def write_review(request, item_id):
 class ItemFormView(LoginRequiredMixin, CreateView):
     form_class = ItemForm
     model = Item
-    success_url = reverse_lazy('vendor_dashboard')
+    success_url = reverse_lazy('vendor_items')
 
     def form_valid(self, form):
         form.instance.vendor = self.request.user.vendor
@@ -107,6 +103,7 @@ class ItemFormView(LoginRequiredMixin, CreateView):
             with open(os.path.join(settings.MEDIA_ROOT, filename), 'wb') as f:
                 f.write(image_file.read())
 
+        messages.success(self.request,"New Item ready for sale!")
         return super().form_valid(form)
     
 class UserLoginView(LoginView):
@@ -114,7 +111,7 @@ class UserLoginView(LoginView):
 
     def get_success_url(self):
         if self.request.user.is_vendor:
-            return reverse_lazy('vendor_dashboard')
+            return reverse_lazy('vendor_items')
         elif self.request.user.is_customer:
             return reverse_lazy('item_list')
 
@@ -128,9 +125,20 @@ class All_ItemList(ListView):
         queryset = queryset.order_by('-num_sales')
     
         return queryset
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
 
-def vendor_item_list(request, vendor_id):
-    vendor = Vendor.objects.get(id=vendor_id)
+        if self.request.user.is_authenticated and self.request.user.is_customer:
+            customer = self.request.user.customer
+            wishlist_items = Wishlist.objects.filter(customer=customer).values_list('item', flat=True)
+            context['wishlist_items'] = wishlist_items
+
+        return context
+
+
+def vendor_item_list(request):
+    vendor = Vendor.objects.get(id=request.user.vendor.id)
     items = Item.objects.filter(vendor=vendor)
     context = {
         'vendor': vendor,
@@ -158,9 +166,9 @@ class ItemUpdateView(UpdateView):
     template_name = 'ecom/item_update.html'
     fields = ['title', 'price', 'description', 'available_units']
 
-
     def get_success_url(self):
-        return reverse_lazy('vendor_items', kwargs={'pk': self.object.pk})
+        messages.success(self.request, "Details updated successfully!")
+        return reverse_lazy('vendor_items')
     
 def vendor_order_view(request, item_id):
     item = get_object_or_404(Item, pk=item_id)
