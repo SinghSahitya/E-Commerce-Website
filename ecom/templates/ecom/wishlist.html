@@ -1,0 +1,63 @@
+{% extends 'ecom/base.html' %}
+{% load discount_tags %}
+{% block content %}
+{% if messages %}
+<div class="container mt-4">
+  {% for message in messages %}
+    <div class="alert alert-info" role="alert">
+      {{ message }}
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+<div class="container-fluid">
+    <div class="row">
+      {% if items %}
+        {% for item in items %}
+          <div class="col-sm-6 col-md-4 col-lg-3">
+            <div class="card mb-4">
+              <a href="{% url 'item_detail' item_id=item.pk %}" style="color: black; text-decoration: none;" class="card-link">
+                <img class="card-img-top" src="{{ item.image.url }}" alt="Card image">
+              <div class="card-body text-center">
+                <h3 class="card-title">{{ item.title }}</h3>
+                {% if item.discount > 0.0 %}
+                  <h5 class="text-danger">Price:<del> Rs {{ item.price }}</del><strong> Rs {{item.price|discounted:item.discount}}</strong></h5>
+                {% else %}
+                  <h5 class="text-danger">Price: Rs {{item.price}}</h5>
+                {% endif %}
+                <p class="card-text">{{ item.description|truncatewords:15 }}</p>
+                <p class="card-text text-primary">In Stock: {{ item.available_units }}</p>
+              </a>
+              <div class="card-body text-center">
+                <form action="{% url 'remove_from_wishlist' item_id=item.pk %}" method="post">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-danger">Remove</button>
+              </form>
+              <p></p>
+              {% if item.available_units > 0  %}
+                <form method="POST" action="{% url 'add_to_cart' item_id=item.pk %}">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-primary">Add to Cart</button>
+                </form>
+              {% endif %}
+              </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="row">
+          <div class="col-md-8 offset-md-2">
+            <div class="card mb-3">
+              <div class="card-body">
+                <h2 class="text-center">Your Wishlist is empty!</h2>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>  
+
+
+{% endblock %}

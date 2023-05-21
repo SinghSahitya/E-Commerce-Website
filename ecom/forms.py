@@ -1,15 +1,15 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from .models import Customer, User, Vendor, Item, Review
+from .models import Customer, User, Vendor, Item, Review, Coupon
 
 
 class CustomerSignUpForm(UserCreationForm):
-    username = forms.CharField(max_length=150, help_text='Required. Enter a username')
-    email = forms.EmailField(max_length=254, help_text='Required. Enter a valid email address.')
-    first_name = forms.CharField(max_length=30, help_text='Required. Enter your first name.')
-    last_name = forms.CharField(max_length=30, help_text='Required. Enter your last name.')
-    phone = forms.CharField(max_length=20, help_text='Required. Enter your phone number.')
-    address = forms.CharField(widget=forms.Textarea(attrs={'rows': 3}), help_text='Required. Enter your address.')
+    username = forms.CharField(max_length=150, help_text='Required. Enter a username', widget=forms.TextInput(attrs={'placeholder': 'Your Username'}))
+    email = forms.EmailField(max_length=254, help_text='Required. Enter a valid email address.',  widget=forms.EmailInput(attrs={'placeholder': 'Your Email'}))
+    first_name = forms.CharField(max_length=30, help_text='Required. Enter your first name.', widget=forms.TextInput(attrs={'placeholder': 'Your First Name'}) )
+    last_name = forms.CharField(max_length=30, help_text='Required. Enter your last name.', widget=forms.TextInput(attrs={'placeholder': 'Your Last Name'}) )
+    phone = forms.CharField(max_length=20, help_text='Required. Enter your phone number.', widget=forms.TextInput(attrs={'placeholder': 'Your Phone Number'}) )
+    address = forms.CharField(widget=forms.Textarea(attrs={'rows': 3, 'placeholder': 'Your Address'}), help_text='Required. Enter your address.')
 
     class Meta:
         model = User
@@ -17,11 +17,11 @@ class CustomerSignUpForm(UserCreationForm):
 
 
 class VendorSignUpForm(UserCreationForm):
-    username = forms.CharField(max_length=150, help_text='Required. Enter a username')
-    email = forms.EmailField(max_length=254, help_text='Required. Enter a valid email address.')
-    first_name = forms.CharField(max_length=30, help_text='Required. Enter your first name.')
-    last_name = forms.CharField(max_length=30, help_text='Required. Enter your last name.')
-    company_name = forms.CharField(max_length=150)
+    username = forms.CharField(max_length=150, help_text='Required. Enter a username', widget=forms.TextInput(attrs={'placeholder': 'Your Username'}) )
+    email = forms.EmailField(max_length=254, help_text='Required. Enter a valid email address.',  widget=forms.EmailInput(attrs={'placeholder': 'Your Email'}))
+    first_name = forms.CharField(max_length=30, help_text='Required. Enter your first name.', widget=forms.TextInput(attrs={'placeholder': 'Your First Name'}) )
+    last_name = forms.CharField(max_length=30, help_text='Required. Enter your last name.', widget=forms.TextInput(attrs={'placeholder': 'Your Last Name'}))
+    company_name = forms.CharField(max_length=150,  widget=forms.TextInput(attrs={'placeholder': 'Your Company Name'}))
 
     class Meta:
         model = User
@@ -31,7 +31,7 @@ class VendorSignUpForm(UserCreationForm):
 class ItemForm(forms.ModelForm):
     class Meta:
         model = Item
-        fields = {'title',  'price', 'available_units' , 'image','description'}
+        fields = {'title',  'price', 'available_units' , 'image','description', 'discount'}
 
 
 class ReviewForm(forms.ModelForm):
@@ -39,3 +39,8 @@ class ReviewForm(forms.ModelForm):
     class Meta:
         model = Review
         fields = {'review'}
+
+class CouponForm(forms.ModelForm):
+    class Meta:
+        model = Coupon
+        fields = ['code', 'discount_percentage']

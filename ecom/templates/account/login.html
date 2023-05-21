@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 {% load static %}
+{% load socialaccount %}
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -37,7 +38,10 @@
 						</form>
 					</div>
 					<div class="row">
-						<p>Don't have an account? <a href="{% url 'register' %}">Register Here</a></p>
+						<a href="{% provider_login_url 'google' %}" class="btn btn-primary btn-google">Sign in with Google</a>
+					</div>
+					<div class="row">
+						<p>Don't have an account? <a href="{% url 'customer_signup' %}">Register Here</a></p>
 					</div>
 				</div>
 			</div>

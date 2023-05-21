@@ -1,0 +1,30 @@
+{% extends 'ecom/vendor_dashboard.html' %}
+{% block bodyblock %}
+<h1>Coupons</h1><p></p>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Sr.</th>
+            <th>Coupon Code</th>
+            <th>Discount(in %)</th>
+            <th>Date of Creation</th>
+            <th>Remove</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for coupon in coupons %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ coupon.code }}</td>
+                <td>{{ coupon.discount_percentage }}</td>
+                <td>{{ coupon.created_at }}</td>
+                <td><a href="{% url 'remove_coupon' coupon.id %}">Remove</a></td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="5" class="text-center">No coupons found.</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

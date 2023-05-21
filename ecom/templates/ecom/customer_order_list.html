@@ -1,28 +1,40 @@
 {% extends 'ecom/base.html' %}
 {% block content %}
-    <h1>Previous Orders</h1>
+
+    <div class="container">
+        {% for message in messages %}
+        <div class="alert alert-success" role="alert">
+            {{ message }}
+        </div>
+        {% endfor %}
+        <h1 class="text-center">Previous Orders</h1>
     {% if orders %}
         <table class="table table-striped">
             <thead>
-                <tr>
-                <th scope="col">Sr.</th>    
+                <tr>   
+                
                 <th scope="col">Item Name</th>
                 <th scope="col">Company</th>
                 <th scope="col">Quantity</th>
                 <th scope="col">Amount</th>
-                <th scope="col">#</th>
+                <th scope="col">Ordered At</th>
+                <th scope="col">Review</th>
                 </tr>
             </thead>
             <tbody>
+               
                 {% for order in orders %}
-                <tr>
-                <td>{{ forloop.counter }}</td>
-                <td>{{order.item.title}}</td>
-                <td>{{order.vendor.company_name}}</td>
-                <td>{{order.quantity}}</td>
-                <td>{{order.total_cost}}</td>
-                <td><a href="{% url 'write_review' item_id=order.item.pk %}">Review</a></td>
-                </tr>
+                    {% for order_item in order.order_items.all %}
+                        <tr>
+                        <td>{{ order_item.item.title }}</td>
+                        <td>{{ order.vendor.company_name }}</td>
+                        <td>{{ order_item.quantity }}</td>
+                        <td>{{ order_item.total_cost }}</td>
+                        <td>{{order.ordered_at}}</td>
+                        <td><a href="{% url 'write_review' item_id=order_item.item.pk %}">Review</a></td>
+                        </tr>
+                    {% endfor %}
+
                 {% endfor %}
             </tbody>
         </table>
@@ -31,4 +43,7 @@
         <td colspan="7">No orders found.</td>
       </tr>
     {% endif %}
+    </div>
+
+    
 {% endblock %}

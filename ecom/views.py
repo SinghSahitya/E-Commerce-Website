@@ -3,8 +3,8 @@ from django.db import models
 from django.db.models import Sum
 from django.db.models.query import QuerySet
 from django.shortcuts import render, redirect, get_object_or_404
-from .forms import CustomerSignUpForm, VendorSignUpForm, ItemForm, ReviewForm
-from .models import User, Customer, Vendor, Item, Orders, Review
+from .forms import CustomerSignUpForm, VendorSignUpForm, ItemForm, ReviewForm, CouponForm
+from .models import User, Customer, Vendor, Item, Orders, Review, Wishlist, OrderItem, CartItem, Cart, Coupon
 from django.views.generic import CreateView, ListView, DetailView, UpdateView, DeleteView, View
 from django.urls import reverse_lazy
 from django.contrib.auth.views import LoginView
@@ -14,27 +14,25 @@ from django.contrib.auth import logout
 from django.contrib import messages
 import uuid, os
 from ECommerce import settings
+from django.core.mail import send_mail
+from mailjet_rest import Client
+import requests
+import csv
+from django.http import HttpResponse
+from ECommerce import creds
 
 
 def home(request):
     return render(request, 'ecom/home.html')
 
-@vendor_required
-def dashboard_view(request):
-    vendor = request.user.vendor
-    context = {'vendor':vendor}
-    return render(request, 'ecom/vendor_dashboard.html', context)
-
-@customer_required
-def cart(request):
-    return render(request, 'ecom/cart.html')
-
 def logout_view(request):
     logout(request)
     return redirect('item_list')
 
-def register(request):
-    return render(request, 'registration/register.html')
+def vendor_profile(request):
+    vendor = request.user.vendor
+    orders = Orders.objects.filter(vendor=vendor)
+    return render(request, 'ecom/vendor_profile.html', {'orders':orders})
 
 def order_success_view(request):
     return render(request, 'ecom/order_success.html')
@@ -53,8 +51,10 @@ def customer_signup(request):
             customer.save()
             return redirect('/')
     else:
+        
         form = CustomerSignUpForm()
     return render(request, 'registration/customer_signup.html', {'form': form})
+
 
 def vendor_singup(request):
     if request.method == 'POST':
@@ -69,6 +69,7 @@ def vendor_singup(request):
             vendor.save()
             return redirect('/')
     else:
+        
         form = VendorSignUpForm()
     return render(request, 'registration/vendor_signup.html', {'form': form})
 
@@ -94,7 +95,7 @@ def write_review(request, item_id):
 class ItemFormView(LoginRequiredMixin, CreateView):
     form_class = ItemForm
     model = Item
-    success_url = reverse_lazy('vendor_dashboard')
+    success_url = reverse_lazy('vendor_items')
 
     def form_valid(self, form):
         form.instance.vendor = self.request.user.vendor
@@ -105,14 +106,15 @@ class ItemFormView(LoginRequiredMixin, CreateView):
             with open(os.path.join(settings.MEDIA_ROOT, filename), 'wb') as f:
                 f.write(image_file.read())
 
+        messages.success(self.request,"New Item ready for sale!")
         return super().form_valid(form)
     
 class UserLoginView(LoginView):
-    template_name = 'registration/login.html'
+    template_name = 'account/login.html'
 
     def get_success_url(self):
         if self.request.user.is_vendor:
-            return reverse_lazy('vendor_dashboard')
+            return reverse_lazy('vendor_items')
         elif self.request.user.is_customer:
             return reverse_lazy('item_list')
 
@@ -122,12 +124,24 @@ class All_ItemList(ListView):
     
     def get_queryset(self):
         queryset = super().get_queryset()
-        queryset = queryset.annotate(num_sales=Sum('order__quantity'))
+        queryset = queryset.annotate(num_sales=Sum('order_items__quantity'))
         queryset = queryset.order_by('-num_sales')
+    
         return queryset
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
 
-def vendor_item_list(request, vendor_id):
-    vendor = Vendor.objects.get(id=vendor_id)
+        if self.request.user.is_authenticated and self.request.user.is_customer:
+            customer = self.request.user.customer
+            wishlist_items = Wishlist.objects.filter(customer=customer).values_list('item', flat=True)
+            context['wishlist_items'] = wishlist_items
+
+        return context
+
+
+def vendor_item_list(request):
+    vendor = Vendor.objects.get(id=request.user.vendor.id)
     items = Item.objects.filter(vendor=vendor)
     context = {
         'vendor': vendor,
@@ -153,46 +167,16 @@ class CustomerUpdateInfoView(UpdateView):
 class ItemUpdateView(UpdateView):
     model = Item
     template_name = 'ecom/item_update.html'
-    fields = ['title', 'price', 'description', 'available_units']
-
+    fields = ['title', 'price', 'description', 'available_units', 'discount']
 
     def get_success_url(self):
-        return reverse_lazy('vendor_items', kwargs={'pk': self.object.pk})
-
-@customer_required
-def place_order_view(request, item_id):
-    item = get_object_or_404(Item, pk=item_id)
-    customer = request.user.customer
-
-    if request.method == 'POST':
-        quantity = int(request.POST.get('quantity'))
-        total_cost = quantity * item.price
-        if customer.balance >= total_cost and item.available_units >= quantity:
-            order = Orders(customer=customer, vendor=item.vendor, item=item, quantity=quantity, total_cost=total_cost)
-            order.save()
-            customer.balance -= total_cost
-            customer.save()
-            item.available_units -= quantity
-            item.save()
-            return redirect('order_success')
-        else:
-            return redirect('item_list')
-    return render(request, 'ecom/place_order.html', {'item': item})
-
-class OrderListView(ListView):
-    model = Orders
-    template_name = 'ecom/customer_order_list.html'
-    context_object_name = 'orders'
-
-    def get_queryset(self):
-        return Orders.objects.filter(customer__user=self.request.user)
+        messages.success(self.request, "Details updated successfully!")
+        return reverse_lazy('vendor_items')
     
-
 def vendor_order_view(request, item_id):
     item = get_object_or_404(Item, pk=item_id)
-    orders = Orders.objects.filter(item=item)
-    return render(request, 'ecom/vendor_order.html', {'item':item, 'orders':orders})
-
+    order_items = OrderItem.objects.filter(item=item)
+    return render(request, 'ecom/vendor_order.html', {'item': item, 'order_items': order_items})
 
 def item_detail(request, item_id):
     item = get_object_or_404(Item, pk=item_id)
@@ -210,4 +194,250 @@ def delete_item(request, item_id):
     return redirect('vendor_items', vendor_id=request.user.vendor.pk)
 
 
+def download_report(request):
+    report_data = Orders.objects.filter(vendor=request.user.vendor)
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="report.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow(['Order ID', 'Customer', 'Item', 'Quantity', 'Total Cost', 'Ordered At'])  
+    for order in report_data:
+        for order_item in order.order_items.all():
+            writer.writerow([order_item.order.id, order.customer.user.username, order_item.item.title, order_item.quantity, order_item.total_cost, order.ordered_at])
+
+    return response
+
+@customer_required
+def add_to_wishlist(request, item_id):
+    item = get_object_or_404(Item, pk=item_id)
+    customer = request.user.customer
+
+    # Check if the item already exists in the customer's wishlist
+    if Wishlist.objects.filter(customer=customer, item=item).exists():
+        messages.error(request, 'This item is already in your wishlist.')
+    else:
+        wishlist = Wishlist(customer=customer, item=item)
+        wishlist.save()
+        messages.success(request, f"{item.title} added to your wishlist!")
+    return redirect('wishlist') 
+
+@customer_required
+def wishlist_view(request):
+    customer = request.user.customer
+    wishlist_items = Item.objects.filter(wishlist__customer=customer)
+    context = {'items': wishlist_items}
+    return render(request, 'ecom/wishlist.html', context)
+
+@customer_required
+def remove_from_wishlist(request, item_id):
+    item = get_object_or_404(Item, pk=item_id)
+    customer = request.user.customer
+    try:
+        wishlist_item = Wishlist.objects.get(customer=customer, item=item)
+        wishlist_item.delete()
+        messages.success(request, f"{item.title} has been removed from your wishlist.")
+    except Wishlist.DoesNotExist:
+        messages.error(request, f"{item.title} is not in your wishlist.")
+    return redirect('wishlist')
+
+@customer_required
+def add_to_cart(request, item_id):
+    item = Item.objects.get(pk=item_id)
+    customer = request.user.customer
+    cart, created = Cart.objects.get_or_create(customer=customer)
+    cart_item, created = CartItem.objects.get_or_create(cart=cart, item=item)
+    try:
+        cart_item.quantity = int(request.POST.get('quantity'))
+    except:
+        pass
+    cart_item.save()
+    return redirect('cart')
+
+def remove_from_cart(request, item_id):
+    item = Item.objects.get(pk=item_id)
+    customer = request.user.customer
+    cart = Cart.objects.get(customer=customer)
+    cart_item = CartItem.objects.get(cart=cart, item=item)
+    if cart_item.quantity > 1:
+        cart_item.quantity -= 1
+        cart_item.save()
+    else:
+        cart_item.delete()
+        cart.items.remove(item)
+
+    return redirect('cart')
+
+
+def cart(request):
+    # Retrieve cart items for the current user
+    customer = request.user.customer
+    try:
+        cart = request.user.customer.cart
+    except Cart.DoesNotExist:
+        # Create a new cart for the customer
+        customer = request.user.customer
+        cart = Cart.objects.create(customer=customer)
+    cart_items = cart.cart_items.all()
+
+    # Calculate the total cost
+    total_cost = 0
+    for cart_item in cart_items:
+        if cart_item.item.discount > 0:
+            discounted_price = cart_item.item.price - cart_item.item.price*(cart_item.item.discount/100)
+            item_total = discounted_price * cart_item.quantity
+        else:
+            item_total = cart_item.item.price * cart_item.quantity
+        total_cost += item_total
+
+    if cart.applied_coupon:
+        applied_coupon = cart.applied_coupon
+        vendor = applied_coupon.vendor
+
+    # Calculate the total cost for items sold by the vendor
+        vendor_total_cost = 0
+        for cart_item in cart_items:
+            if cart_item.item.vendor == vendor:
+                if cart_item.item.discount > 0:
+                    discounted_price = cart_item.item.price - cart_item.item.price * (cart_item.item.discount / 100)
+                    vendor_total_cost += discounted_price * cart_item.quantity
+                else:
+                    vendor_total_cost += cart_item.item.price * cart_item.quantity
+
+        # Apply the coupon discount to the vendor's items only
+        total_cost -= vendor_total_cost * (applied_coupon.discount_percentage / 100)
+    # Pass the total cost to the template context
+    context = {
+        'cart_items': cart_items,
+        'total_cost': total_cost,
+    }
+
+    return render(request, 'ecom/shopping_cart.html', context)
+
+def apply_coupon(request):
+    if request.method == 'POST':
+        coupon_code = request.POST.get('coupon_code')
+
+        try:
+            coupon = Coupon.objects.get(code=coupon_code)
+        except Coupon.DoesNotExist:
+            messages.error(request, "Invalid coupon code.")
+            return redirect('cart')
+        cart = request.user.customer.cart
+        cart.applied_coupon = coupon
+        cart.save()
+
+        messages.success(request, "Coupon applied successfully.")
+        return redirect('cart')
+    
+def create_coupon(request):
+    if request.method == 'POST':
+        form = CouponForm(request.POST)
+        if form.is_valid():
+            coupon = form.save(commit=False)
+            coupon.vendor = request.user.vendor
+            coupon.save()
+            messages.success(request, "Coupon created successfully.")
+            return redirect('view_couponS')
+    else:
+        form = CouponForm()
+
+    context = {
+        'form': form,
+    }
+    return render(request, 'ecom/create_coupon.html', context)
+
+def view_coupons(request):
+    coupons = Coupon.objects.filter(vendor=request.user.vendor)
+    return render(request, 'ecom/view_coupons.html', {"coupons":coupons})
+
+def remove_coupon(request, coupon_id):
+    coupon = get_object_or_404(Coupon, id=coupon_id)
+    coupon.delete()
+    return redirect('view_coupons')
+
+def orders(request):
+    customer = request.user.customer
+    orders = Orders.objects.filter(customer=customer)
+    return render(request, 'ecom/customer_order_list.html', {'orders': orders})
+
+
+
+def send_email_to_vendor(vendor_email, customer_name, item_name):
+    mailgun_url = f"https://api.mailgun.net/v3/{creds.MAILGUN_DOMAIN}/messages"
+    auth = ("api", creds.MAILGUN_API_KEY)
+    data = {
+        "from": f"DjangoMart <mailgun@{creds.MAILGUN_DOMAIN}>",
+        "to": vendor_email,
+        "subject": "New Order",
+        "text": f"Hello, {vendor_email}!\n\nYou have a new order from {customer_name} for the item {item_name}.",
+        "html": f"<h3>Hello, {vendor_email}!</h3><p>You have a new order from {customer_name} for the item {item_name}.</p>"
+    }
+    response = requests.post(mailgun_url, auth=auth, data=data)
+    print(response.status_code)
+    return response.status_code
+
+
+def place_order(request):
+    customer = request.user.customer
+    cart = Cart.objects.get(customer=customer)
+    items = cart.cart_items.all()
+    vendor_items = {}
+    total_amount = 0
+
+    for cart_item in items:
+        vendor = cart_item.item.vendor
+        if vendor not in vendor_items:
+            vendor_items[vendor] = []
+        vendor_items[vendor].append(cart_item)
+        item_price = cart_item.item.price
+
+        if cart.applied_coupon and cart.applied_coupon.vendor == vendor:
+            coupon_discount = (cart.applied_coupon.discount_percentage / 100) * item_price
+            item_price -= coupon_discount
+
+        if cart_item.item.discount > 0:
+            discounted_price = item_price - (item_price * (cart_item.item.discount / 100))
+            total_amount += discounted_price * cart_item.quantity
+        else:
+            total_amount += item_price * cart_item.quantity
+
+    if total_amount > customer.balance:
+        messages.error(request, "Insufficient balance. Cannot place order.")
+        return redirect('cart')
+
+    for vendor, cart_items in vendor_items.items():
+        order = Orders.objects.create(customer=customer, vendor=vendor)
+        for cart_item in cart_items:
+            item = cart_item.item
+            item_price = item.price
+            
+            if cart.applied_coupon and cart.applied_coupon.vendor == vendor:
+                coupon_discount = (cart.applied_coupon.discount_percentage / 100) * item_price
+                item_price -= coupon_discount   
+
+
+            if item.discount > 0:
+                item_discount = (item.discount / 100) * item_price
+                item_price -= item_discount
+
+            OrderItem.objects.create(order=order, item=item, quantity=cart_item.quantity, total_cost=cart_item.quantity * item_price)
+            
+            item.available_units -= cart_item.quantity
+            item.save()
+            cart_item.delete()
+
+            vendor_email = item.vendor.email
+            customer_name = request.user.username
+            item_name = item.title
+            status_code = send_email_to_vendor(vendor_email, customer_name, item_name)
+            
+
+    customer.balance -= total_amount
+    customer.save()
+    messages.success(request, "Order placed successfully!")
+    cart.applied_coupon = None
+    cart.save()
+    return redirect('orders')
+    
 
