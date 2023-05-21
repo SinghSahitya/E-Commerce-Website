@@ -3,8 +3,8 @@ from django.db import models
 from django.db.models import Sum
 from django.db.models.query import QuerySet
 from django.shortcuts import render, redirect, get_object_or_404
-from .forms import CustomerSignUpForm, VendorSignUpForm, ItemForm, ReviewForm
-from .models import User, Customer, Vendor, Item, Orders, Review, Wishlist, OrderItem, CartItem, Cart
+from .forms import CustomerSignUpForm, VendorSignUpForm, ItemForm, ReviewForm, CouponForm
+from .models import User, Customer, Vendor, Item, Orders, Review, Wishlist, OrderItem, CartItem, Cart, Coupon
 from django.views.generic import CreateView, ListView, DetailView, UpdateView, DeleteView, View
 from django.urls import reverse_lazy
 from django.contrib.auth.views import LoginView
@@ -51,8 +51,10 @@ def customer_signup(request):
             customer.save()
             return redirect('/')
     else:
+        
         form = CustomerSignUpForm()
     return render(request, 'registration/customer_signup.html', {'form': form})
+
 
 def vendor_singup(request):
     if request.method == 'POST':
@@ -67,6 +69,7 @@ def vendor_singup(request):
             vendor.save()
             return redirect('/')
     else:
+        
         form = VendorSignUpForm()
     return render(request, 'registration/vendor_signup.html', {'form': form})
 
@@ -107,7 +110,7 @@ class ItemFormView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
     
 class UserLoginView(LoginView):
-    template_name = 'registration/login.html'
+    template_name = 'account/login.html'
 
     def get_success_url(self):
         if self.request.user.is_vendor:
@@ -164,7 +167,7 @@ class CustomerUpdateInfoView(UpdateView):
 class ItemUpdateView(UpdateView):
     model = Item
     template_name = 'ecom/item_update.html'
-    fields = ['title', 'price', 'description', 'available_units']
+    fields = ['title', 'price', 'description', 'available_units', 'discount']
 
     def get_success_url(self):
         messages.success(self.request, "Details updated successfully!")
@@ -217,7 +220,8 @@ def add_to_wishlist(request, item_id):
         wishlist = Wishlist(customer=customer, item=item)
         wishlist.save()
         messages.success(request, f"{item.title} added to your wishlist!")
-    return redirect('wishlist')
+    return redirect('wishlist') 
+
 @customer_required
 def wishlist_view(request):
     customer = request.user.customer
@@ -266,6 +270,7 @@ def remove_from_cart(request, item_id):
 
 
 def cart(request):
+    # Retrieve cart items for the current user
     customer = request.user.customer
     try:
         cart = request.user.customer.cart
@@ -274,7 +279,82 @@ def cart(request):
         customer = request.user.customer
         cart = Cart.objects.create(customer=customer)
     cart_items = cart.cart_items.all()
-    return render(request, 'ecom/cart.html', {'cart_items': cart_items})
+
+    # Calculate the total cost
+    total_cost = 0
+    for cart_item in cart_items:
+        if cart_item.item.discount > 0:
+            discounted_price = cart_item.item.price - cart_item.item.price*(cart_item.item.discount/100)
+            item_total = discounted_price * cart_item.quantity
+        else:
+            item_total = cart_item.item.price * cart_item.quantity
+        total_cost += item_total
+
+    if cart.applied_coupon:
+        applied_coupon = cart.applied_coupon
+        vendor = applied_coupon.vendor
+
+    # Calculate the total cost for items sold by the vendor
+        vendor_total_cost = 0
+        for cart_item in cart_items:
+            if cart_item.item.vendor == vendor:
+                if cart_item.item.discount > 0:
+                    discounted_price = cart_item.item.price - cart_item.item.price * (cart_item.item.discount / 100)
+                    vendor_total_cost += discounted_price * cart_item.quantity
+                else:
+                    vendor_total_cost += cart_item.item.price * cart_item.quantity
+
+        # Apply the coupon discount to the vendor's items only
+        total_cost -= vendor_total_cost * (applied_coupon.discount_percentage / 100)
+    # Pass the total cost to the template context
+    context = {
+        'cart_items': cart_items,
+        'total_cost': total_cost,
+    }
+
+    return render(request, 'ecom/shopping_cart.html', context)
+
+def apply_coupon(request):
+    if request.method == 'POST':
+        coupon_code = request.POST.get('coupon_code')
+
+        try:
+            coupon = Coupon.objects.get(code=coupon_code)
+        except Coupon.DoesNotExist:
+            messages.error(request, "Invalid coupon code.")
+            return redirect('cart')
+        cart = request.user.customer.cart
+        cart.applied_coupon = coupon
+        cart.save()
+
+        messages.success(request, "Coupon applied successfully.")
+        return redirect('cart')
+    
+def create_coupon(request):
+    if request.method == 'POST':
+        form = CouponForm(request.POST)
+        if form.is_valid():
+            coupon = form.save(commit=False)
+            coupon.vendor = request.user.vendor
+            coupon.save()
+            messages.success(request, "Coupon created successfully.")
+            return redirect('view_couponS')
+    else:
+        form = CouponForm()
+
+    context = {
+        'form': form,
+    }
+    return render(request, 'ecom/create_coupon.html', context)
+
+def view_coupons(request):
+    coupons = Coupon.objects.filter(vendor=request.user.vendor)
+    return render(request, 'ecom/view_coupons.html', {"coupons":coupons})
+
+def remove_coupon(request, coupon_id):
+    coupon = get_object_or_404(Coupon, id=coupon_id)
+    coupon.delete()
+    return redirect('view_coupons')
 
 def orders(request):
     customer = request.user.customer
@@ -282,54 +362,6 @@ def orders(request):
     return render(request, 'ecom/customer_order_list.html', {'orders': orders})
 
 
-# @customer_required
-# def place_order_view(request, item_id):
-#     item = get_object_or_404(Item, pk=item_id)
-#     customer = request.user.customer
-
-#     if request.method == 'POST':
-#         quantity = int(request.POST.get('quantity'))
-#         total_cost = quantity * item.price
-#         if customer.balance >= total_cost and item.available_units >= quantity:
-#             order = Orders(customer=customer, vendor=item.vendor, item=item, quantity=quantity, total_cost=total_cost)
-#             order.save()
-#             customer.balance -= total_cost
-#             customer.save()
-#             item.available_units -= quantity
-#             item.save()
-
-#             #for sending emails
-#             vendor_email = item.vendor.email
-#             vendor_name = item.vendor.company_name
-#             customer_name = customer.user.username
-#             email_subject = 'New Order Placed!'
-#             email_body = f'You have a new order from {customer_name}. Item: {item.title}. Quantity: {quantity}. Total Cost: {total_cost}'
-            
-#             mailgun_api_key = 'b92ee73d6256b7199da0998ee4b66e58-6b161b0a-02b199da'
-#             mailgun_domain = 'sandbox9ac137dada9e488b83c11c29e7d4018a.mailgun.org'
-#             mailgun_base_url = 'https://api.mailgun.net/v3/sandbox9ac137dada9e488b83c11c29e7d4018a.mailgun.org'
-
-#             # Prepare the email data
-#             data = {
-#                 'from': f'{settings.MAILJET_SENDER_NAME} <mailgun@sandbox9ac137dada9e488b83c11c29e7d4018a.mailgun.org>',
-#                 'to': [vendor_email, "YOU@sandbox9ac137dada9e488b83c11c29e7d4018a.mailgun.org"],
-#                 'subject': email_subject,
-#                 'text': email_body
-#             }
-
-#             # Send the email using Mailgun API  
-#             response = requests.post(
-#                 f'{mailgun_base_url}/messages',
-#                 auth=('api', mailgun_api_key),
-#                 data=data
-#             )
-            
-
-#             print(response.status_code)
-#             return redirect('order_success')
-#         else:
-#             return redirect('item_list')
-#     return render(request, 'ecom/place_order.html', {'item': item})
 
 def send_email_to_vendor(vendor_email, customer_name, item_name):
     mailgun_url = f"https://api.mailgun.net/v3/{creds.MAILGUN_DOMAIN}/messages"
@@ -358,7 +390,17 @@ def place_order(request):
         if vendor not in vendor_items:
             vendor_items[vendor] = []
         vendor_items[vendor].append(cart_item)
-        total_amount += cart_item.item.price * cart_item.quantity
+        item_price = cart_item.item.price
+
+        if cart.applied_coupon and cart.applied_coupon.vendor == vendor:
+            coupon_discount = (cart.applied_coupon.discount_percentage / 100) * item_price
+            item_price -= coupon_discount
+
+        if cart_item.item.discount > 0:
+            discounted_price = item_price - (item_price * (cart_item.item.discount / 100))
+            total_amount += discounted_price * cart_item.quantity
+        else:
+            total_amount += item_price * cart_item.quantity
 
     if total_amount > customer.balance:
         messages.error(request, "Insufficient balance. Cannot place order.")
@@ -368,7 +410,19 @@ def place_order(request):
         order = Orders.objects.create(customer=customer, vendor=vendor)
         for cart_item in cart_items:
             item = cart_item.item
-            OrderItem.objects.create(order=order, item=item, quantity=cart_item.quantity, total_cost=cart_item.quantity*cart_item.item.price)
+            item_price = item.price
+            
+            if cart.applied_coupon and cart.applied_coupon.vendor == vendor:
+                coupon_discount = (cart.applied_coupon.discount_percentage / 100) * item_price
+                item_price -= coupon_discount   
+
+
+            if item.discount > 0:
+                item_discount = (item.discount / 100) * item_price
+                item_price -= item_discount
+
+            OrderItem.objects.create(order=order, item=item, quantity=cart_item.quantity, total_cost=cart_item.quantity * item_price)
+            
             item.available_units -= cart_item.quantity
             item.save()
             cart_item.delete()
@@ -382,6 +436,8 @@ def place_order(request):
     customer.balance -= total_amount
     customer.save()
     messages.success(request, "Order placed successfully!")
+    cart.applied_coupon = None
+    cart.save()
     return redirect('orders')
     
 

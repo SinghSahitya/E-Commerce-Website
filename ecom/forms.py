@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from .models import Customer, User, Vendor, Item, Review
+from .models import Customer, User, Vendor, Item, Review, Coupon
 
 
 class CustomerSignUpForm(UserCreationForm):
@@ -31,7 +31,7 @@ class VendorSignUpForm(UserCreationForm):
 class ItemForm(forms.ModelForm):
     class Meta:
         model = Item
-        fields = {'title',  'price', 'available_units' , 'image','description'}
+        fields = {'title',  'price', 'available_units' , 'image','description', 'discount'}
 
 
 class ReviewForm(forms.ModelForm):
@@ -39,3 +39,8 @@ class ReviewForm(forms.ModelForm):
     class Meta:
         model = Review
         fields = {'review'}
+
+class CouponForm(forms.ModelForm):
+    class Meta:
+        model = Coupon
+        fields = ['code', 'discount_percentage']

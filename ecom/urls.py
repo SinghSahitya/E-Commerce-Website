@@ -4,6 +4,7 @@ from django.conf import settings
 from django.conf.urls.static import static  
 
 urlpatterns = [
+    path('accounts/', include('allauth.urls')),
     path('', views.All_ItemList.as_view(), name='item_list'),
     path('logout', views.logout_view, name='logout'),
     path('cart/', views.cart, name='cart'),
@@ -11,6 +12,7 @@ urlpatterns = [
     path('vendor_signup/', views.vendor_singup, name='vendor_signup'),
     path('item/new/', views.ItemFormView.as_view(), name='new_item'),
     path('login/', views.UserLoginView.as_view(), name='login'),
+    path('accounts/login/', views.UserLoginView.as_view(), name='account_login'),
     path('vendor_profile', views.vendor_profile, name='vendor_profile'),
     path('vendor_items/', views.vendor_item_list, name='vendor_items'),
     path('customer_profile/', views.CustomerDetailView.as_view(), name='customer_detail'),
@@ -29,6 +31,12 @@ urlpatterns = [
     path('wishlist/remove/<int:item_id>/', views.remove_from_wishlist, name='remove_from_wishlist'),
     path('add_to_cart/<int:item_id>/', views.add_to_cart, name='add_to_cart'),
     path('remove_from_cart/<int:item_id>/', views.remove_from_cart, name='remove_from_cart'),
+    path('apply-coupon/', views.apply_coupon, name='apply_coupon'),
+    path('create-coupon/', views.create_coupon, name='create_coupon'),
+    path('view_coupons/', views.view_coupons, name='view_coupons'),
+    path('remove_coupon/<int:coupon_id>/', views.remove_coupon, name='remove_coupon'),
+    
+    
 
 ]
     

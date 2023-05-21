@@ -1,0 +1,82 @@
+{% extends 'ecom/base.html' %}
+{% load discount_tags %}
+{% block content %}
+  {% if messages %}
+  <div class="container mt-4">
+    {% for message in messages %}
+      <div class="alert alert-info" role="alert">
+        {{ message }}
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-8">
+        <div class="row">
+        {% if cart_items %}
+       
+            {% for cart_item in cart_items %}
+              <div class="col-md-4 mb-4">
+                <div class="card">
+                  <a href="{% url 'item_detail' item_id=cart_item.item.pk %}" style="color: black; text-decoration: none;" class="card-link">
+                    <img class="card-img-top" src="{{ cart_item.item.image.url }}" alt="Card image">
+                    <div class="card-body text-center">
+                      <h5 class="card-title">{{ cart_item.item.title }}</h5>
+                      {% if cart_item.item.discount > 0.0 %}
+                        <h6 class="text-danger">Price: <del>Rs {{ cart_item.item.price }}</del> <strong>Rs {{ cart_item.item.price|discounted:cart_item.item.discount }}</strong></h6>
+                      {% else %}
+                        <h6 class="text-danger">Price: Rs {{ cart_item.item.price }}</h6>
+                      {% endif %}
+                      <p class="card-text">{{ cart_item.item.description|truncatewords:15 }}</p>
+                      <p class="card-text text-primary">In Stock: {{ cart_item.item.available_units }}</p>
+                      <p class="card-text text-primary">Quantity: {{ cart_item.quantity }}</p>
+                    </div>
+                    </a>
+                    <div class="card-footer text-center">
+                      <form method="POST" action="{% url 'remove_from_cart' item_id=cart_item.item.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">Remove from Cart</button>
+                      </form>
+                    </div>
+                    
+                </div>
+              </div>
+            {% endfor %}
+           
+        {% else %}
+            <div class="col-md-12 ">
+              <div class="card mb-3">
+                <div class="card-body">
+                  <h2 class="text-center">Your Shopping Cart is empty!</h2>
+                </div>
+              </div>
+            </div>
+        {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  <footer class="footer bg-light mt-4 pt-4">
+    <div class="container">
+      <div class="row">
+        <div class="col">
+          <div class="text-center">
+            <form method="POST" action="{% url 'apply_coupon' %}" class="mb-3">
+              {% csrf_token %}
+              <div class="input-group">
+                <input type="text" name="coupon_code" placeholder="Enter coupon code" class="form-control">
+                <button type="submit" class="btn btn-primary">Apply Coupon</button>
+              </div>
+            </form>
+            <h5 class="d-inline-block mb-0">Total Amount: <strong>Rs {{ total_cost }}</strong></h5>
+            <a href="{% url 'place_order' %}" class="btn btn-primary ml-2">Place Order</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+  
+  
+  
+{% endblock %}

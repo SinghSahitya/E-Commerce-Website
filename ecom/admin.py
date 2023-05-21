@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, Customer, Vendor, Item, Orders, Review, Wishlist, OrderItem, Cart, CartItem
+from .models import User, Customer, Vendor, Item, Orders, Review, Wishlist, OrderItem, Cart, CartItem, Coupon
 from import_export.admin import ImportExportModelAdmin
 # Register your models here.
 
@@ -11,6 +11,7 @@ admin.site.register(Review)
 admin.site.register(Wishlist)
 admin.site.register(Cart)
 admin.site.register(CartItem)
+admin.site.register(Coupon)
 
 
 

@@ -1,4 +1,5 @@
 {% extends "ecom/base.html" %}
+{% load discount_tags %}
 {% load static %}
 {% block headcontent %}
   <link rel="stylesheet" href="{% static 'css/item_list.css' %}">
@@ -24,7 +25,11 @@
             {% else %}
               <h3 class="card-title text-center">{{ item.title }}</h3>
             {% endif %}
-            <h5 class="card-title text-danger">Price: Rs {{ item.price }}</h5>
+            {% if item.discount > 0 %}
+              <h5 class="text-danger">Price:<del> Rs {{ item.price }}</del><strong> Rs {{item.price|discounted:item.discount}}</strong></h5>
+            {% else %}
+              <h5 class="text-danger">Price: Rs {{item.price}}</h5>
+            {% endif %}
             <p class="card-text">{{ item.description|truncatewords:15 }}</p>
             <p class="card-text text-primary">In Stock: {{ item.available_units }}</p>
             <p class="card-text text-success">Sales: {{ item.num_sales }} Units</p>

@@ -1,4 +1,5 @@
 {% extends 'ecom/base.html' %}
+{% load discount_tags %}
 {% block content %}
 {% if messages %}
 <div class="container mt-4">
@@ -18,6 +19,7 @@
           <tr>
             <th>Item</th>
             <th>Quantity</th>
+            <th>Amount(in Rs)</th>
             <th>Remove</th>
           </tr>
         </thead>
@@ -26,7 +28,12 @@
             <tr>
               <td>{{ cart_item.item.title }}</td>
               <td>{{ cart_item.quantity }}</td>
-              <td><form method="POST" action="{% url 'remove_from_cart' item_id=cart_item.item.pk %}">
+              {% if cart_item.item.discount > 0 %}
+                <td><del class="text-danger">{{cart_item.item.price}}</del> <strong>{{cart_item.item.price|discounted:cart_item.item.discount}}</strong></td>
+              {% else %}
+                <td>{{cart_item.item.price}}</td>
+              {% endif %}
+                <td><form method="POST" action="{% url 'remove_from_cart' item_id=cart_item.item.pk %}">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-danger">Remove from Cart</button>
             </form>
