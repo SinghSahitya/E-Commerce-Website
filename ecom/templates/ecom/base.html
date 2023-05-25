@@ -24,14 +24,14 @@
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
               {% if user.is_authenticated and user.is_customer%}
               <li class="nav-item">
-                <a class="nav-link active" aria-current="page" href="{% url 'wishlist' %}">Wishlist</a>
-              </li>
-              
-              <li class="nav-item">
-                <a class="nav-link active" aria-current="page" href="{% url 'orders' %}">Orders</a>
-              </li>
-              <li class="nav-item">
                 <a class="nav-link active" aria-current="page" href="{% url 'customer_detail' %}">Profile</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link active" aria-current="page" href="{% url 'add_money' %}">Balance</a>
+              </li><li class="nav-item">
+                <a class="nav-link active" aria-current="page" href="{% url 'wishlist' %}">Wishlist</a>
+              </li><li class="nav-item">
+                <a class="nav-link active" aria-current="page" href="{% url 'orders' %}">Orders</a>
               </li>
               {% endif %}
               

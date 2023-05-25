@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 {% load static %}
-{% load socialaccount %}
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -32,13 +31,10 @@
 								<!-- <span class="fa fa-lock"></span> -->
 								<input type="password" name="password" id="password" class="form__input" placeholder="Password">
 							</div>
-							<div class="row">
+							<div>
 								<input type="submit" value="Submit" class="btn">
 							</div>
 						</form>
-					</div>
-					<div class="row">
-						<a href="{% provider_login_url 'google' %}" class="btn btn-primary btn-google">Sign in with Google</a>
 					</div>
 					<div class="row">
 						<p>Don't have an account? <a href="{% url 'customer_signup' %}">Register Here</a></p>
