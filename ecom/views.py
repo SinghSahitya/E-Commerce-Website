@@ -1,29 +1,22 @@
-from typing import Any, Optional
-from django.db import models
 from django.db.models import Sum
-from django.db.models.query import QuerySet
 from django.shortcuts import render, redirect, get_object_or_404
 from .forms import CustomerSignUpForm, VendorSignUpForm, ItemForm, ReviewForm, CouponForm
-from .models import User, Customer, Vendor, Item, Orders, Review, Wishlist, OrderItem, CartItem, Cart, Coupon
-from django.views.generic import CreateView, ListView, DetailView, UpdateView, DeleteView, View
+from .models import Customer, Vendor, Item, Orders, Review, Wishlist, OrderItem, CartItem, Cart, Coupon
+from django.views.generic import CreateView, ListView, DetailView, UpdateView
 from django.urls import reverse_lazy
 from django.contrib.auth.views import LoginView
 from django.contrib.auth.mixins import LoginRequiredMixin
-from .decorators import customer_required, vendor_required
+from .decorators import customer_required
 from django.contrib.auth import logout
 from django.contrib import messages
 import uuid, os
 from ECommerce import settings
-from django.core.mail import send_mail
 from mailjet_rest import Client
-import requests
+from ECommerce import settings
 import csv
 from django.http import HttpResponse
-from ECommerce import creds
+from django.shortcuts import redirect
 
-
-def home(request):
-    return render(request, 'ecom/home.html')
 
 def logout_view(request):
     logout(request)
@@ -41,7 +34,7 @@ def customer_signup(request):
     if request.method == 'POST':
         form = CustomerSignUpForm(request.POST)
         if form.is_valid():
-            user = form.save()
+            user = form.save(commit=False)
             user.is_customer = True
             user.save()
             customer = Customer.objects.create(user=user)
@@ -51,12 +44,11 @@ def customer_signup(request):
             customer.save()
             return redirect('/')
     else:
-        
         form = CustomerSignUpForm()
+
     return render(request, 'registration/customer_signup.html', {'form': form})
 
-
-def vendor_singup(request):
+def vendor_signup(request):
     if request.method == 'POST':
         form = VendorSignUpForm(request.POST)
         if form.is_valid():
@@ -69,7 +61,6 @@ def vendor_singup(request):
             vendor.save()
             return redirect('/')
     else:
-        
         form = VendorSignUpForm()
     return render(request, 'registration/vendor_signup.html', {'form': form})
 
@@ -91,55 +82,6 @@ def write_review(request, item_id):
     return render(request, 'ecom/write_review.html', {'item':item, 'form':form})
 
 
-
-class ItemFormView(LoginRequiredMixin, CreateView):
-    form_class = ItemForm
-    model = Item
-    success_url = reverse_lazy('vendor_items')
-
-    def form_valid(self, form):
-        form.instance.vendor = self.request.user.vendor
-        image_file = self.request.FILES.get('image')
-        if image_file:
-            filename = f'{uuid.uuid4()}.{image_file.name.split(".")[-1]}'
-            form.instance.image = filename
-            with open(os.path.join(settings.MEDIA_ROOT, filename), 'wb') as f:
-                f.write(image_file.read())
-
-        messages.success(self.request,"New Item ready for sale!")
-        return super().form_valid(form)
-    
-class UserLoginView(LoginView):
-    template_name = 'account/login.html'
-
-    def get_success_url(self):
-        if self.request.user.is_vendor:
-            return reverse_lazy('vendor_items')
-        elif self.request.user.is_customer:
-            return reverse_lazy('item_list')
-
-class All_ItemList(ListView):
-    model = Item
-    template_name = 'ecom/item_list.html'
-    
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        queryset = queryset.annotate(num_sales=Sum('order_items__quantity'))
-        queryset = queryset.order_by('-num_sales')
-    
-        return queryset
-    
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-
-        if self.request.user.is_authenticated and self.request.user.is_customer:
-            customer = self.request.user.customer
-            wishlist_items = Wishlist.objects.filter(customer=customer).values_list('item', flat=True)
-            context['wishlist_items'] = wishlist_items
-
-        return context
-
-
 def vendor_item_list(request):
     vendor = Vendor.objects.get(id=request.user.vendor.id)
     items = Item.objects.filter(vendor=vendor)
@@ -149,30 +91,6 @@ def vendor_item_list(request):
     }
     return render(request, 'ecom/vendor_item_list.html', context)
 
-class CustomerDetailView(DetailView):
-    model = Customer
-
-    def get_object(self, queryset=None):
-        return self.request.user.customer
-    
-class CustomerUpdateInfoView(UpdateView):
-    model = Customer
-    template_name ='ecom/customer_updateinfo.html'
-    fields = ['email','phone', 'address', 'balance']
-    success_url = reverse_lazy('customer_detail')
-
-    def get_object(self, queryset=None):
-        return self.request.user.customer
-    
-class ItemUpdateView(UpdateView):
-    model = Item
-    template_name = 'ecom/item_update.html'
-    fields = ['title', 'price', 'description', 'available_units', 'discount']
-
-    def get_success_url(self):
-        messages.success(self.request, "Details updated successfully!")
-        return reverse_lazy('vendor_items')
-    
 def vendor_order_view(request, item_id):
     item = get_object_or_404(Item, pk=item_id)
     order_items = OrderItem.objects.filter(item=item)
@@ -208,12 +126,95 @@ def download_report(request):
 
     return response
 
+
+class ItemFormView(LoginRequiredMixin, CreateView):
+    form_class = ItemForm
+    model = Item
+    success_url = reverse_lazy('vendor_items')
+
+    def form_valid(self, form):
+        form.instance.vendor = self.request.user.vendor
+        image_file = self.request.FILES.get('image')
+        if image_file:
+            filename = f'{uuid.uuid4()}.{image_file.name.split(".")[-1]}'
+            form.instance.image = filename
+            with open(os.path.join(settings.MEDIA_ROOT, filename), 'wb') as f:
+                f.write(image_file.read())
+
+        messages.success(self.request,"New Item ready for sale!")
+        return super().form_valid(form)
+    
+class UserLoginView(LoginView):
+    template_name = 'registration/login.html'
+
+    def get_success_url(self):
+        if self.request.user.is_vendor:
+            return reverse_lazy('vendor_items')
+        elif self.request.user.is_customer:
+            return reverse_lazy('item_list')
+
+class All_ItemList(ListView):
+    model = Item
+    template_name = 'ecom/item_list.html'
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        queryset = queryset.annotate(num_sales=Sum('order_items__quantity'))
+        queryset = queryset.order_by('-num_sales')
+    
+        return queryset
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        if self.request.user.is_authenticated and self.request.user.is_customer:
+            customer = self.request.user.customer
+            wishlist_items = Wishlist.objects.filter(customer=customer).values_list('item', flat=True)
+            context['wishlist_items'] = wishlist_items
+
+        return context
+
+
+class CustomerDetailView(DetailView):
+    model = Customer
+
+    def get_object(self, queryset=None):
+        return self.request.user.customer
+    
+class CustomerUpdateInfoView(UpdateView):
+    model = Customer
+    template_name ='ecom/customer_updateinfo.html'
+    fields = ['email','phone', 'address', 'balance']
+    success_url = reverse_lazy('customer_detail')
+
+    def get_object(self, queryset=None):
+        return self.request.user.customer
+    
+class CustomerBalanceUpdate(UpdateView):
+    model = Customer
+    template_name = 'ecom/balance.html'
+    fields = ['balance']
+    success_url = reverse_lazy('customer_detail')
+
+    def get_object(self, queryset=None):
+        return self.request.user.customer    
+    
+    
+class ItemUpdateView(UpdateView):
+    model = Item
+    template_name = 'ecom/item_update.html'
+    fields = ['title', 'price', 'description', 'available_units', 'discount']
+
+    def get_success_url(self):
+        messages.success(self.request, "Details updated successfully!")
+        return reverse_lazy('vendor_items')
+    
+
 @customer_required
 def add_to_wishlist(request, item_id):
     item = get_object_or_404(Item, pk=item_id)
     customer = request.user.customer
 
-    # Check if the item already exists in the customer's wishlist
     if Wishlist.objects.filter(customer=customer, item=item).exists():
         messages.error(request, 'This item is already in your wishlist.')
     else:
@@ -270,17 +271,16 @@ def remove_from_cart(request, item_id):
 
 
 def cart(request):
-    # Retrieve cart items for the current user
+
     customer = request.user.customer
     try:
         cart = request.user.customer.cart
     except Cart.DoesNotExist:
-        # Create a new cart for the customer
+ 
         customer = request.user.customer
         cart = Cart.objects.create(customer=customer)
     cart_items = cart.cart_items.all()
 
-    # Calculate the total cost
     total_cost = 0
     for cart_item in cart_items:
         if cart_item.item.discount > 0:
@@ -294,7 +294,7 @@ def cart(request):
         applied_coupon = cart.applied_coupon
         vendor = applied_coupon.vendor
 
-    # Calculate the total cost for items sold by the vendor
+   
         vendor_total_cost = 0
         for cart_item in cart_items:
             if cart_item.item.vendor == vendor:
@@ -304,9 +304,9 @@ def cart(request):
                 else:
                     vendor_total_cost += cart_item.item.price * cart_item.quantity
 
-        # Apply the coupon discount to the vendor's items only
+        
         total_cost -= vendor_total_cost * (applied_coupon.discount_percentage / 100)
-    # Pass the total cost to the template context
+
     context = {
         'cart_items': cart_items,
         'total_cost': total_cost,
@@ -361,22 +361,28 @@ def orders(request):
     orders = Orders.objects.filter(customer=customer)
     return render(request, 'ecom/customer_order_list.html', {'orders': orders})
 
-
-
-def send_email_to_vendor(vendor_email, customer_name, item_name):
-    mailgun_url = f"https://api.mailgun.net/v3/{creds.MAILGUN_DOMAIN}/messages"
-    auth = ("api", creds.MAILGUN_API_KEY)
+def send_email(vendor_email, customer_name, item_name, vendor_company_name):
+    mailjet = Client(auth=(settings.MAILJET_API_KEY, settings.MAILJET_API_SECRET), version='v3.1')
     data = {
-        "from": f"DjangoMart <mailgun@{creds.MAILGUN_DOMAIN}>",
-        "to": vendor_email,
-        "subject": "New Order",
-        "text": f"Hello, {vendor_email}!\n\nYou have a new order from {customer_name} for the item {item_name}.",
-        "html": f"<h3>Hello, {vendor_email}!</h3><p>You have a new order from {customer_name} for the item {item_name}.</p>"
+        'Messages': [
+            {
+                'From': {
+                    'Email': 'f20220920@pilani.bits-pilani.ac.in',
+                    'Name': 'Sahitya Singh'
+                },
+                'To': [
+                    {
+                        'Email': vendor_email,
+                        'Name': vendor_company_name
+                    }
+                ],
+                'Subject': "New Order Placed",
+                'TextPart': f"Hello, {vendor_email}. You have a new order from{customer_name} for the item {item_name}."
+            }
+        ]
     }
-    response = requests.post(mailgun_url, auth=auth, data=data)
-    print(response.status_code)
-    return response.status_code
-
+    result = mailjet.send.create(data=data)
+    return result.status_code == 200
 
 def place_order(request):
     customer = request.user.customer
@@ -428,9 +434,11 @@ def place_order(request):
             cart_item.delete()
 
             vendor_email = item.vendor.email
+            vendor_company_name = item.vendor.company_name
             customer_name = request.user.username
             item_name = item.title
-            status_code = send_email_to_vendor(vendor_email, customer_name, item_name)
+            response = send_email(vendor_email, customer_name, item_name, vendor_company_name)
+            print('Status Code: ',response)
             
 
     customer.balance -= total_amount
@@ -440,4 +448,3 @@ def place_order(request):
     cart.save()
     return redirect('orders')
     
-

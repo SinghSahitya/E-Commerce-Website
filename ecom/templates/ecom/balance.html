@@ -1,0 +1,18 @@
+{% extends 'ecom/base.html' %}
+{% block content %}
+<div class="container">
+    <div class="mt-4 p-5 bg-secondary text-white rounded">
+        <div class="container">
+            <h1>Add Money</h1>
+            <h5>Current Balance: {{customer.balance}}</h5>
+            <form method="POST">
+                {% csrf_token %}
+                {{form.as_p}}
+                <button type="submit" class="save btn btn-dark">Save Changes</button> <input type="button" class="btn btn-dark" value="Back" onclick="history.back()">
+            </form>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

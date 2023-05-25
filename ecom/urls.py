@@ -1,22 +1,22 @@
-from django.urls import path , include
+from django.urls import path 
 from . import views
 from django.conf import settings  
 from django.conf.urls.static import static  
 
 urlpatterns = [
-    path('accounts/', include('allauth.urls')),
-    path('', views.All_ItemList.as_view(), name='item_list'),
+
+    path('login/', views.UserLoginView.as_view(), name='login'),
     path('logout', views.logout_view, name='logout'),
+    path('', views.All_ItemList.as_view(), name='item_list'),
     path('cart/', views.cart, name='cart'),
     path('customer_signup/', views.customer_signup, name='customer_signup'),
-    path('vendor_signup/', views.vendor_singup, name='vendor_signup'),
+    path('vendor_signup/', views.vendor_signup, name='vendor_signup'),
     path('item/new/', views.ItemFormView.as_view(), name='new_item'),
-    path('login/', views.UserLoginView.as_view(), name='login'),
-    path('accounts/login/', views.UserLoginView.as_view(), name='account_login'),
     path('vendor_profile', views.vendor_profile, name='vendor_profile'),
     path('vendor_items/', views.vendor_item_list, name='vendor_items'),
     path('customer_profile/', views.CustomerDetailView.as_view(), name='customer_detail'),
     path('customer_updateinfo/', views.CustomerUpdateInfoView.as_view(), name='customer_updateinfo'),
+    path('balance/', views.CustomerBalanceUpdate.as_view(), name='add_money'),
     path('item/<int:pk>/update/', views.ItemUpdateView.as_view(), name='item_update'),
     path('place_order/', views.place_order, name='place_order'),
     path('order_success/', views.order_success_view, name='order_success'),
@@ -35,14 +35,9 @@ urlpatterns = [
     path('create-coupon/', views.create_coupon, name='create_coupon'),
     path('view_coupons/', views.view_coupons, name='view_coupons'),
     path('remove_coupon/<int:coupon_id>/', views.remove_coupon, name='remove_coupon'),
-    
-    
 
 ]
     
   
-    
-
-
 if settings.DEBUG:  
         urlpatterns += static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT)  

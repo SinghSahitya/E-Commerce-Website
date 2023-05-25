@@ -12,26 +12,38 @@
 {% endif %}
 <div class="container-fluid">
   <div class="row">
-    {% for item in items %}
-      <div class="col-sm-6 col-md-4 col-lg-3">
-        <div class="card mb-4">
-          <img class="card-img-top" src="{{ item.image.url }}" alt="Card image">
-          <div class="card-body text-center">
-            <h4 class="card-title">{{ item.title }}</h4>
-            {% if item.discount > 0.0 %}
-              <h5 class="text-danger">Price:<del> Rs {{ item.price }}</del><strong> Rs {{item.price|discounted:item.discount}}</strong></h5>
-            {% else %}
-              <h5 class="text-danger">Price: Rs {{item.price}}</h5>
-            {% endif %}
-            <p class="card-text">{{ item.description|truncatewords:15 }}</p>
-            <p class="card-text text-primary">In Stock: {{ item.available_units }}</p>
-            <a href="{% url 'item_update' pk=item.pk %}" class="btn btn-primary">Edit</a> 
-            <a href="{% url 'delete_item' item_id=item.pk %}" class="btn btn-danger">Delete</a>
-            <a href="{% url 'vendor_order' item_id=item.pk %}" class="btn btn-primary">Orders</a>
+    {% if items %}
+      {% for item in items %}
+        <div class="col-sm-6 col-md-4 col-lg-3">
+          <div class="card mb-4">
+            <img class="card-img-top" src="{{ item.image.url }}" alt="Card image">
+            <div class="card-body text-center">
+              <h4 class="card-title">{{ item.title }}</h4>
+              {% if item.discount > 0.0 %}
+                <h5 class="text-danger">Price:<del> Rs {{ item.price }}</del><strong> Rs {{item.price|discounted:item.discount}}</strong></h5>
+              {% else %}
+                <h5 class="text-danger">Price: Rs {{item.price}}</h5>
+              {% endif %}
+              <p class="card-text">{{ item.description|truncatewords:15 }}</p>
+              <p class="card-text text-primary">In Stock: {{ item.available_units }}</p>
+              <a href="{% url 'item_update' pk=item.pk %}" class="btn btn-primary">Edit</a> 
+              <a href="{% url 'delete_item' item_id=item.pk %}" class="btn btn-danger">Delete</a>
+              <a href="{% url 'vendor_order' item_id=item.pk %}" class="btn btn-primary">Orders</a>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="row">
+        <div class="col-md-8 offset-md-2">
+          <div class="card mb-3">
+            <div class="card-body">
+              <h2 class="text-center">No items for sale!</h2>
+            </div>
           </div>
         </div>
       </div>
-    {% endfor %}
+    {% endif %}
   </div>
 </div>
 {% endblock %}
