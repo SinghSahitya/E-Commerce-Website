@@ -16,7 +16,7 @@ from ECommerce import settings
 import csv
 from django.http import HttpResponse
 from django.shortcuts import redirect
-
+from django.db.models.functions import Coalesce
 
 def logout_view(request):
     logout(request)
@@ -109,7 +109,7 @@ def item_detail(request, item_id):
 def delete_item(request, item_id):
     item = Item.objects.get(id=item_id)
     item.delete()
-    return redirect('vendor_items', vendor_id=request.user.vendor.pk)
+    return redirect('vendor_items')
 
 
 def download_report(request):
@@ -159,7 +159,7 @@ class All_ItemList(ListView):
     
     def get_queryset(self):
         queryset = super().get_queryset()
-        queryset = queryset.annotate(num_sales=Sum('order_items__quantity'))
+        queryset = queryset.annotate(num_sales=Coalesce(Sum('order_items__quantity'), 0))
         queryset = queryset.order_by('-num_sales')
     
         return queryset
@@ -338,7 +338,7 @@ def create_coupon(request):
             coupon.vendor = request.user.vendor
             coupon.save()
             messages.success(request, "Coupon created successfully.")
-            return redirect('view_couponS')
+            return redirect('view_coupons')
     else:
         form = CouponForm()
 
